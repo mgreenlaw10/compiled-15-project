@@ -18,7 +18,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke": "node scripts/smoke-launch.mjs",
-    "verify": "npm run typecheck && npm run test && npm run build && npm run smoke"
+    "verify": "npm run typecheck && npm run test && npm run build && npm run smoke",
+    "mockup": "vite --config vite.mockup.config.ts",
+    "build:mockup": "vite build --config vite.mockup.config.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",

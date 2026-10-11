@@ -1,4 +1,4 @@
-node_modules/
+node_modules
 out/
 dist/
 .vite/
@@ -6,3 +6,5 @@ dist/
 .DS_Store
 .cartograph/
 tests/.tmp/
+
+dist-mockup/
