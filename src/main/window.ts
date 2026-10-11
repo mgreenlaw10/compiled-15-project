@@ -13,6 +13,8 @@ export interface WindowOptions {
   /** Directory of the built main process, used to locate preload and renderer. */
   distDir: string
   isDev: boolean
+  /** Window title. Carries the profile name when one is set. */
+  title?: string
 }
 
 export function createWindow(options: WindowOptions): BrowserWindow {
@@ -22,7 +24,7 @@ export function createWindow(options: WindowOptions): BrowserWindow {
     minWidth: 1100,
     minHeight: 700,
     show: false,
-    title: 'Cartograph',
+    title: options.title ?? 'Cartograph',
     backgroundColor: '#14161a',
     autoHideMenuBar: false,
     webPreferences: {

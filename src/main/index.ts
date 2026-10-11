@@ -14,11 +14,17 @@ import { fileURLToPath } from 'node:url'
 import { IPC, type CommandName } from '../shared/ipc'
 import { registerHandlers } from './ipc'
 import { installMenu } from './menu'
+import { applyProfile, windowTitle } from './profile'
 import { SettingsStore } from './services/settings-store'
 import { createWindow } from './window'
 
 const distDir = path.dirname(fileURLToPath(import.meta.url))
 const isDev = !app.isPackaged
+
+// Before anything else, and before the single-instance lock: the lock is
+// scoped to `userData`, so a profile has to be in place or a second instance
+// would still quit. See ./profile.ts.
+const profile = applyProfile()
 
 let mainWindow: BrowserWindow | null = null
 let disposeHandlers: (() => void) | null = null
@@ -28,10 +34,11 @@ function send(command: CommandName): void {
 }
 
 function newWindow(): BrowserWindow {
-  return createWindow({ distDir, isDev })
+  return createWindow({ distDir, isDev, title: windowTitle(profile) })
 }
 
-// One window is the whole application; a second instance should focus it.
+// One window is the whole application *per profile*; a second instance of the
+// same profile should focus the first rather than starting a rival.
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
@@ -49,6 +56,14 @@ if (!app.requestSingleInstanceLock()) {
       getWindow: () => mainWindow,
       userDataDir: app.getPath('userData')
     })
+    if (profile.name) {
+      // Said out loud: a profiled instance has its own settings and its own
+      // collaboration identity, and a user needs to know which one they are
+      // looking at before they wonder why their API key is missing.
+      console.log(
+        `Cartograph profile "${profile.name}" — separate settings and collaboration identity in ${profile.userDataDir}`
+      )
+    }
 
     installMenu({ send, getWindow: () => mainWindow })
     mainWindow = newWindow()
