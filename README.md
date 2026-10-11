@@ -105,7 +105,10 @@ fresh checkout with no install step.
    dragging a node around: the status bar does **not** change, because node
    positions are visual state and can never cause a code change.
 
-4. **Generate.** `Generate Project`.
+4. **Generate.** `Generate Project` generates and writes the changes directly
+   to the source project, backs up touched files, and runs validation. There
+   is no separate confirmation or apply step. Use `Plan the changes` in the
+   Changes tab if you want to review a plan or export to a separate directory.
 
    The Changes tab fills in with the plan, per operation:
 
@@ -123,17 +126,16 @@ fresh checkout with no install step.
    extensions: the rewriter preserves the project's own convention rather than
    imposing one.
 
-5. **Write it and check it.** `Write the changes…` → *Generate into a new
-   directory* → pick an empty folder → `Write changes`.
+5. **Check the results.** Open the Results tab after generation.
 
    The Results tab reports what was written, and then the result of actually
-   running the project's own checks in the output directory:
+   running the project's own checks in the source directory:
 
    - **TypeScript type check** — passed
    - **Project tests** — passed (all 9 of the sample's tests, including the four
      that import the module that just moved)
 
-6. **Confirm the loop closes.** `Open Project` on the generated directory.
+6. **Confirm the loop closes.** The graph is refreshed from the updated source.
    `Session Management` is now a module the analyzer found by itself, and the
    `Auth → Session Management` edge is marked *verified*, because real imports
    back it up.
@@ -243,6 +245,11 @@ and Module Contracts. Public visibility and actual cross-module use are separate
 Selecting a function, type, field, contract or file opens a focused inspector
 for that node. Its properties remain editable; the module editor is available
 through the Module details button.
+Interface Functions, Data Structures and Private Implementation each have an
+Add button that opens a new element's properties immediately. Describe the
+desired behavior there; a suggested signature and structured parameters, return
+types or fields are optional. Generation uses the completed description and
+properties together to implement the new element through the configured AI model.
 The project overview shows one arrow per module pair (with arrowheads at both
 ends for mutual dependencies). Select a module to reveal its individual incoming
 and outgoing dependency types; click the canvas background to collapse them.

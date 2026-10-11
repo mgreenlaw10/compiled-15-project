@@ -1,18 +1,30 @@
 /**
  * Planning a change set, previewing it, and writing it.
  *
- * Nothing here writes to disk by itself: `plan` asks the backend what it would
- * do, `loadDiffs` renders that, and only `apply` commits — which is why the
- * generate dialog can show the whole consequence before anything happens.
+ * `generate` plans and writes directly to the source project. Separate plan
+ * and apply actions remain available for reviewing or exporting changes.
  */
 
 import type { GenerationSlice, Slice } from '../types'
+import { applyOperation } from '../../../shared/graph/apply-operation'
 
 export const createGenerationSlice: Slice<GenerationSlice> = (set, get) => ({
   changeSet: null,
   diffs: null,
   applyResult: null,
   validation: null,
+
+  async generate(useAi) {
+    if (get().busy !== 'idle') return
+    set({ changeSet: null, applyResult: null, validation: null })
+    await get().plan(useAi)
+    if (get().error || !get().changeSet) return
+    if (!get().changeSet!.changes.length) {
+      set({ bottomTab: 'changes' })
+      return
+    }
+    await get().apply({ mode: 'in-place', createBackup: true, validate: true })
+  },
 
   async plan(useAi) {
     const { project, original, operations, appliedOperationIds } = get()
@@ -29,8 +41,15 @@ export const createGenerationSlice: Slice<GenerationSlice> = (set, get) => ({
 
     set({ busy: 'planning', error: null, bottomTab: 'changes', diffs: null })
     try {
+      // Already written operations still establish identities and ownership
+      // needed by subsequent edits, even though their source changes are skipped.
+      let baseline = original
+      for (const op of operations.filter((op) => appliedOperationIds.includes(op.id))) {
+        const result = applyOperation(baseline, op)
+        if (result.ok) baseline = result.graph
+      }
       const changeSet = await window.cartograph.planChanges(project.root, {
-        graph: original,
+        graph: baseline,
         operations: pending,
         useAi
       })
@@ -70,19 +89,26 @@ export const createGenerationSlice: Slice<GenerationSlice> = (set, get) => ({
         busy: 'idle',
         dialog: null,
         appliedOperationIds: [
-          ...new Set([...get().appliedOperationIds, ...result.appliedOperationIds])
+          ...new Set([...get().appliedOperationIds, ...(options.mode === 'in-place' ? result.appliedOperationIds : [])])
         ],
         dirty: true
       })
 
       // After writing over the project itself, the analyzed architecture is
       // stale; re-analyze so the graph reflects what is now on disk.
-      if (options.mode === 'in-place' && result.errors.length === 0) {
-        await get().analyze({ useAi: false })
+      if (options.mode === 'in-place' && result.errors.length === 0 &&
+        changeSet.outcomes.every((outcome) => ['applied', 'metadata_only'].includes(outcome.status))) {
+        await get().analyze({ useAi: false, force: true })
         set({
+          changeSet,
+          applyResult: result,
+          validation: result.validation,
+          bottomTab: 'results',
           notice:
             'Applied the changes to the project and re-analyzed it from the new source.'
         })
+      } else if (options.mode === 'in-place') {
+        set({ notice: 'Wrote the generated source changes. Unfinished edits remain pending; see the generation results.' })
       } else if (result.errors.length === 0) {
         set({
           notice: `Generated the project into ${result.outputDirectory}. The original project was not modified.`

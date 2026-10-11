@@ -677,7 +677,7 @@ describe('the engine on a hand-built graph', () => {
     expect(changeSet.changes.map((c) => c.kind)).toEqual(['delete'])
   })
 
-  it('fails an operation the graph rejects, and keeps going', async () => {
+  it('requests AI reconciliation for a graph mismatch, and keeps going', async () => {
     const { changeSet } = await planChanges(
       graph,
       [
@@ -686,7 +686,8 @@ describe('the engine on a hand-built graph', () => {
       ],
       files
     )
-    expect(changeSet.outcomes[0].status).toBe('failed')
+    expect(changeSet.outcomes[0].status).toBe('unsupported')
+    expect(changeSet.outcomes[0].message).toContain('Enable AI assistance')
     expect(changeSet.outcomes[1].status).toBe('metadata_only')
     expect(changeSet.changes).toEqual([])
   })

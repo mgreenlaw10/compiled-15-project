@@ -17,7 +17,7 @@ export function Toolbar(): JSX.Element {
   const saveDocument = useStore((s) => s.saveDocument)
   const relayout = useStore((s) => s.relayout)
   const openDialog = useStore((s) => s.openDialog)
-  const plan = useStore((s) => s.plan)
+  const generate = useStore((s) => s.generate)
   const cancel = useStore((s) => s.cancel)
 
   const pending = usePendingSummary()
@@ -73,12 +73,12 @@ export function Toolbar(): JSX.Element {
 
       <button
         className="btn btn--primary"
-        onClick={() => void plan(settings?.hasApiKey === true)}
+        onClick={() => void generate(settings?.hasApiKey === true)}
         disabled={!idle || pending.structural + pending.metadata === 0}
         title={
           pending.structural + pending.metadata === 0
             ? 'Nothing is waiting to be generated'
-            : 'Work out the source changes your graph edits imply'
+            : 'Generate and write changes directly to the source project'
         }
       >
         Generate Project

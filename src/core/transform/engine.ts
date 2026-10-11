@@ -144,9 +144,11 @@ async function runOperation(
       }
       return executeMoveSymbol(op, ctx)
     case 'add_dependency':
-      return executeAddDependency(op, ctx)
-    case 'remove_dependency':
-      return executeRemoveDependency(op, ctx)
+    case 'remove_dependency': {
+      const result = op.type === 'add_dependency' ? executeAddDependency(op, ctx) : executeRemoveDependency(op, ctx)
+      if (['unsupported', 'partial', 'failed'].includes(result.status) && ai?.available) return ai.execute(op, ctx)
+      return result
+    }
     case 'update_module':
       return {
         status: 'metadata_only',
@@ -221,16 +223,22 @@ export async function planChanges(
     const effective = prepared.creations.get(op.id) ?? op
     const reduced = applyOperation(current, effective)
     if (!reduced.ok) {
-      log.error(`${label}: ${reduced.error}`)
-      outcomes.push({
-        operationId: op.id,
-        operationType: op.type,
-        status: 'failed',
-        message: `The graph rejected this operation: ${reduced.error}`,
-        executor: 'none',
-        touchedPaths: [],
-        warnings: []
-      })
+      // A stale local projection is context for generation, not a veto on
+      // user intent. Let the transformer resolve source ownership/dependencies.
+      log.warn(`${label}: resolving graph mismatch through generation: ${reduced.error}`)
+      let result: OpResult
+      try {
+        result = ai?.available ? await ai.execute(effective, {
+          workspace, graph: current, nextGraph: current, log
+        }) : unsupported(`Enable AI assistance to reconcile this edit with the current source. ${ai?.unavailableReason ?? 'No model provider API key is configured.'}`)
+      } catch (error) {
+        result = failed(`${label} threw while running: ${(error as Error).message}`)
+      }
+      if (result.touchedPaths.length && ['applied', 'partial'].includes(result.status)) {
+        try { current = await refreshProgramAnchors(current, workspace) }
+        catch (error) { result.warnings.push(`Could not refresh source bindings: ${(error as Error).message}`) }
+      }
+      outcomes.push(outcomeFrom(op, result))
       continue
     }
 

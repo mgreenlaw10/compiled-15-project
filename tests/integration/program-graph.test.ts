@@ -12,12 +12,34 @@ import { validateProject } from '../../src/core/output/validate'
 import type { GraphOperationBody, GraphOperation } from '../../src/shared/types/operations'
 import { operationId } from '../../src/shared/util/id'
 import { migrateGraph } from '../../src/shared/graph/program'
+import { createDraftSymbol } from '../../src/shared/graph/draft-symbol'
+import { createGraph, createModule } from '../../src/shared/graph/model'
+import { createAiTransformer } from '../../src/core/ai/transformer'
+import { silentLogger } from '../../src/core/logger'
 
 const JAVA = path.resolve(__dirname, '../../examples/program-graph/java')
 const C = path.resolve(__dirname, '../../examples/program-graph/c')
 const op = (body: GraphOperationBody, version: number): GraphOperation => ({ ...body, id: operationId(), actor: 'user', issuedAt: new Date().toISOString(), baseVersion: version })
 
 describe('hierarchical program analysis', () => {
+  it('sends ownership mismatches to generation instead of rejecting user intent', async () => {
+    const { graph } = await analyzeProject(C)
+    const symbol = graph.program.symbols.find((s) => s.name === 'account_withdraw' && s.definition)!
+    const other = graph.modules.find((m) => !m.files.includes(symbol.source.file))!
+    let calls = 0
+    const request = op({ type: 'update_symbol', moduleId: other.id, symbolId: symbol.id, changes: { description: 'Update the withdrawal behavior' } }, graph.version)
+    const plan = await planChanges(graph, [request], await loadSourceFiles(C), { ai: {
+      available: true, unavailableReason: '', async execute(received, ctx) {
+        calls++
+        expect(received).toEqual(request)
+        ctx.workspace.write(symbol.source.file, ctx.workspace.read(symbol.source.file)! + '\n// updated behavior\n', { operationId: received.id, reason: 'Resolve ownership from source' })
+        return { status: 'applied', executor: 'ai', message: 'Updated source', touchedPaths: [symbol.source.file], warnings: [] }
+      }
+    } })
+    expect(calls).toBe(1)
+    expect(plan.changeSet.outcomes[0].status).toBe('applied')
+    expect(plan.changeSet.changes).toHaveLength(1)
+  })
   it('extracts Python instance fields, binds qualified module calls, and keeps nested assertion evidence separate', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'cartograph-python-program-'))
     try {
@@ -98,6 +120,48 @@ describe('hierarchical program analysis', () => {
 })
 
 describe('fine-grained pending edits and impact', () => {
+  it('generates a description-only draft once using its later properties and records all included operations', async () => {
+    const module = createModule({ id: 'api', name: 'API', files: ['api.ts'] })
+    const graph = createGraph({ projectRoot: '/draft', name: 'Draft', modules: [module] })
+    const symbol = createDraftSymbol(graph, module, 'interface', 'new-symbol')
+    const operations = [
+      op({ type: 'add_symbol', moduleId: module.id, symbol }, 1),
+      op({ type: 'update_symbol', moduleId: module.id, symbolId: symbol.id, expectedVersion: 1, changes: { description: 'Double the input number.', parameters: [{ name: 'value', type: 'number', optional: false, variadic: false }] } }, 2),
+      op({ type: 'update_symbol', moduleId: module.id, symbolId: symbol.id, expectedVersion: 2, changes: { name: 'double' } }, 3)
+    ]
+    let runs = 0
+    const ai = createAiTransformer({ config: { provider: 'anthropic', apiKey: 'test-key', model: 'test-model', effort: 'high', maxFileReads: 10 }, logger: silentLogger,
+      runner: async (options) => {
+        runs++
+        expect(options.operation.type).toBe('add_symbol')
+        expect(options.task).toContain('Double the input number.')
+        expect(options.task).toContain('Signatures are optional suggestions')
+        expect(options.task).toContain('"name": "value"')
+        expect(options.toolContext.nextGraph.program.symbols.find((s) => s.id === symbol.id)?.signature).toBe('')
+        options.toolContext.workspace.write('api.ts', 'export function double(value: number): number { return value * 2; }', { operationId: options.operation.id, reason: 'Implement the described behavior' })
+        return { report: { status: 'applied', summary: 'Implemented doubling.', warnings: [] }, touchedPaths: ['api.ts'], turns: 1,
+          stoppedBecause: null, usage: { inputTokens: 1, outputTokens: 1 } }
+      } })
+    const plan = await planChanges(graph, operations, [['api.ts', '']], { ai })
+    expect(runs).toBe(1)
+    expect(plan.changeSet.outcomes.map((o) => o.status)).toEqual(['applied', 'applied', 'applied'])
+    expect(plan.changeSet.changes[0].operationIds.sort()).toEqual(operations.map((o) => o.id).sort())
+    expect(plan.graph.program.symbols.find((s) => s.id === symbol.id)).toMatchObject({ name: 'double', returnType: 'number', definition: true })
+    const unavailable = await planChanges(graph, operations, [['api.ts', '']])
+    expect(unavailable.changeSet.changes).toEqual([])
+    expect(unavailable.changeSet.outcomes.every((o) => o.status === 'unsupported')).toBe(true)
+  })
+
+  it('allows adding a description-first element to an empty module without inventing observed source', () => {
+    const module = createModule({ id: 'empty', name: 'Empty', directory: 'src/empty' })
+    const graph = createGraph({ projectRoot: '/draft', name: 'Draft', modules: [module] })
+    const symbol = createDraftSymbol(graph, module, 'data', 'new-type')
+    const reduced = applyOperation(graph, { type: 'add_symbol', moduleId: module.id, symbol })
+    expect(reduced.ok).toBe(true)
+    if (reduced.ok) expect(reduced.graph.modules[0].files).toEqual(['src/empty/index.ts'])
+    expect(graph.modules[0].files).toEqual([])
+    expect(symbol.signature).toBe('')
+  })
   it('keeps C file movement pending when include rewriting needs language-specific implementation work', async () => {
     const { graph } = await analyzeProject(C)
     const module = graph.modules.find((m) => m.files.includes('implementation/account.c'))!

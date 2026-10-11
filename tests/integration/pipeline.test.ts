@@ -512,7 +512,8 @@ describe('operations that cannot be carried out', () => {
     })
 
     expect(changeSet.changes).toEqual([])
-    expect(changeSet.outcomes[0].status).toBe('failed')
+    expect(changeSet.outcomes[0].status).toBe('unsupported')
+    expect(changeSet.outcomes[0].message).toContain('Enable AI assistance')
   }, 120_000)
 })
 

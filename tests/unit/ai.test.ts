@@ -530,18 +530,19 @@ describe('the AI transformer', () => {
     expect(partial.warnings.join(' ')).toContain('Review them closely')
   })
 
-  it('refuses operations it is not meant to handle', async () => {
+  it('accepts architectural requests for source reconciliation', async () => {
+    let task = ''
     const transformer = createAiTransformer({
       config,
       logger: silentLogger,
-      runner: async () => outcome({})
+      runner: async (options) => { task = options.task; return outcome({}) }
     })
     const result = await transformer.execute(
       op({ type: 'update_module', moduleId: 'a', description: 'x' }),
       context(new VirtualWorkspace('/p', []))
     )
-    expect(result.status).toBe('unsupported')
-    expect(result.message).toContain('does not handle')
+    expect(result.status).toBe('failed')
+    expect(task).toContain('Graph ownership, IDs and version annotations may be stale')
   })
 })
 

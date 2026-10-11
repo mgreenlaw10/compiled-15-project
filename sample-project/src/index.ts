@@ -14,3 +14,8 @@ export function createApp(): HttpServer {
 export function shutdown(): void {
   database.close()
 }
+
+/** Prints hi to the console. */
+export function sayHi(): void {
+  console.log('hi')
+}

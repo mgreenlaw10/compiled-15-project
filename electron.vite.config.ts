@@ -11,7 +11,12 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     resolve: { alias: { '@shared': shared, '@core': core } },
     build: {
-      rollupOptions: { input: { index: resolve('src/main/index.ts') } }
+      rollupOptions: {
+        input: { index: resolve('src/main/index.ts') },
+        // Keep lazy imports in the loaded main bundle. A rebuild must not
+        // remove hashed chunks that an already running process still needs.
+        output: { inlineDynamicImports: true }
+      }
     }
   },
   preload: {

@@ -60,6 +60,8 @@ export function SymbolCard({ symbol, module, focused = false }: { symbol: Progra
   const outgoing = graph.program.relationships.filter((r) => r.fromSymbolId === symbol.id)
   const contracts = graph.program.contracts.filter((c) => c.symbolId === symbol.id)
   const crossModule = consumers.filter((r) => !module.files.includes(r.source.file)).length
+  const dataKinds = symbol.language === 'java' ? ['class', 'interface', 'record', 'enum'] : symbol.language === 'c' ? ['struct', 'union', 'enum', 'type'] :
+    symbol.language === 'python' ? ['class', 'type'] : symbol.language === 'javascript' ? ['class'] : symbol.language === 'cpp' ? ['class', 'struct', 'union', 'enum', 'type'] : ['class', 'interface', 'enum', 'type']
   const update = (changes: Extract<Parameters<typeof dispatch>[0], { type: 'update_symbol' }>['changes']): void => {
     dispatch({ type: 'update_symbol', moduleId: module.id, symbolId: symbol.id, changes, expectedVersion: symbol.version })
   }
@@ -79,7 +81,7 @@ export function SymbolCard({ symbol, module, focused = false }: { symbol: Progra
       </>}
       <EditText key={`name:${symbol.id}:${symbol.name}`} label="Symbol name" value={symbol.name} commit={(name) => update({ name })} />
       {isDataType(symbol) && <label className="field"><span className="label">Data structure kind</span><select value={symbol.kind} onChange={(e) => update({ kind: e.target.value as ProgramSymbol['kind'] })}>
-        {['class', 'struct', 'union', 'record', 'interface', 'enum', 'type'].map((kind) => <option key={kind}>{kind}</option>)}
+        {[...new Set([symbol.kind, ...dataKinds])].map((kind) => <option key={kind}>{kind}</option>)}
       </select></label>}
       <EditText key={`signature:${symbol.id}:${symbol.signature}`} label={draft ? 'Suggested signature (optional)' : 'Source signature'} value={symbol.signature} commit={(signature) => update({ signature })} />
       {isCallable(symbol) && <>

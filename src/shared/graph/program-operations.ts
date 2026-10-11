@@ -28,11 +28,23 @@ export function applyProgramOperation(graph: ArchitectureGraph, op: GraphOperati
           qualifiedName: op.changes.name ? [...s.qualifiedName.split('.').slice(0, -1), op.changes.name].join('.') : s.qualifiedName,
           publiclyAccessible: op.changes.accessibility ? op.changes.accessibility === 'public' : s.publiclyAccessible,
           descriptionOrigin: op.changes.description !== undefined ? 'user' : s.descriptionOrigin, version: s.version + 1 }) }
+      if (op.type === 'update_symbol' && op.changes.name && symbol.language === 'java' && !symbol.scope &&
+        !symbol.sourceText && !symbol.definition &&
+        (symbol.source.file.endsWith(`/${symbol.name}.java`) || symbol.source.file === `${symbol.name}.java`)) {
+        const name = op.type === 'update_symbol' ? op.changes.name! : symbol.name
+        const nextFile = symbol.source.file.slice(0, -`${symbol.name}.java`.length) + `${name}.java`
+        if (graph.modules.some((m) => m.id !== module.id && m.files.includes(nextFile)) || module.files.some((f) => f === nextFile && f !== symbol.source.file)) return invalid('The renamed type would conflict with an existing source file.')
+        modules = modules.map((m) => m.id === module.id ? { ...m, files: m.files.map((f) => f === symbol.source.file ? nextFile : f) } : m)
+        program = { ...program, symbols: program.symbols.map((s) => s.id === symbol.id ? { ...s,
+          source: { ...s.source, file: nextFile }, nameSource: { ...s.nameSource, file: nextFile }, signatureSource: { ...s.signatureSource, file: nextFile },
+          fields: s.fields.map((f) => ({ ...f, source: { ...f.source, file: nextFile } })) } : s) }
+      }
       break
     }
     case 'add_symbol':
       if (program.symbols.some((s) => s.id === op.symbol.id)) return invalid('Symbol ID already exists.')
       if (!module.files.includes(op.symbol.source.file)) {
+        if (graph.modules.some((m) => m.id !== module.id && m.files.includes(op.symbol.source.file))) return invalid('The planned file already belongs to another module.')
         if (op.symbol.sourceText || op.symbol.definition || op.symbol.source.start !== 0 || op.symbol.source.end !== 0 ||
           !op.symbol.source.file || /(^|\/)\.\.(\/|$)|^\/|^[A-Za-z]:|\\/.test(op.symbol.source.file)) return invalid('Choose a file owned by this module.')
         modules = modules.map((m) => m.id === module.id ? { ...m, files: [...m.files, op.symbol.source.file] } : m)

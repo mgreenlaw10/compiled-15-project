@@ -25,6 +25,7 @@ label.field > span.hint {
   line-height: 1.45;
 }
 
+input:not([type]),
 input[type='text'],
 input[type='password'],
 input[type='number'],

@@ -143,6 +143,7 @@ export interface GenerationSlice {
   validation: ValidationReport | null
 
   plan(useAi: boolean): Promise<void>
+  generate(useAi: boolean): Promise<void>
   loadDiffs(): Promise<void>
   apply(options: {
     mode: WriteMode

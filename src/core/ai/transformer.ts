@@ -68,28 +68,22 @@ export function createAiTransformer(deps: AiTransformerDeps): AiTransformer {
       } else if (op.type === 'scaffold_module') {
         task = scaffoldModulePrompt(op, ctx.nextGraph)
         log.info(`Generating an implementation for module ${op.moduleId}`)
-      } else if (['update_symbol', 'add_symbol', 'remove_symbol', 'move_symbol', 'move_file', 'rename_module', 'delete_module', 'update_implementation', 'add_contract', 'modify_contract', 'remove_contract'].includes(op.type)) {
-        const moduleIds = new Set(['moduleId' in op ? op.moduleId : '', 'fromModuleId' in op ? op.fromModuleId : '', 'toModuleId' in op ? op.toModuleId : '', 'reassignTo' in op ? op.reassignTo : ''])
+      } else {
+        const moduleIds = new Set(['moduleId' in op ? op.moduleId : '', 'fromModuleId' in op ? op.fromModuleId : '', 'toModuleId' in op ? op.toModuleId : '', 'reassignTo' in op ? op.reassignTo : '',
+          'from' in op ? op.from : '', 'to' in op ? op.to : ''])
         task = [
           'Implement this structured program edit using the actual source files. Make targeted changes and adapt affected callers.',
+          'Graph ownership, IDs and version annotations may be stale. Resolve the requested target from source and the supplied context rather than refusing because the local graph disagrees. Dependency edits may require changing imports, includes, callers or implementations across the affected modules.',
           JSON.stringify(op, null, 2),
           'Observed symbols and contracts:', JSON.stringify(ctx.graph.program, null, 2),
           'Desired module components and file ownership:', JSON.stringify(ctx.nextGraph.modules.filter((m) => moduleIds.has(m.id)), null, 2),
           'Desired symbol definitions:', JSON.stringify(ctx.nextGraph.program.symbols.filter((s) => op.type === 'add_symbol' ? s.id === op.symbol.id : 'symbolId' in op && s.id === op.symbolId), null, 2),
           'For new symbols, derive the implementation from the description. Signatures are optional suggestions, not prerequisites. Infer omitted parameters, field types and return types from the requested behavior and existing source conventions.',
-          'Use explicitly supplied discrete properties (parameters, return type, fields, kind and visibility) when present. Preserve whether the new element belongs to the public interface or private implementation. Do not generate placeholder bodies in place of the described behavior.',
+          'Use explicitly supplied discrete properties (name, parameters, return type, fields, kind and visibility) when present. Preserve whether the new element belongs to the public interface or private implementation. Do not generate placeholder bodies in place of the described behavior.',
           'A contract edit requests a behavioral implementation change, not just a comment change. Add or update focused tests where feasible.',
           'Never claim behavioral compatibility because code compiles. Report unverified guarantees and unresolved consumers.',
           'Do not modify unrelated modules. Use read_file before write_file. Return partial or unsupported if requirements cannot be established.'
         ].join('\n')
-      } else {
-        return {
-          status: 'unsupported',
-          executor: 'ai',
-          message: `The AI transformer does not handle "${op.type}" operations.`,
-          touchedPaths: [],
-          warnings: []
-        }
       }
 
       const run = deps.runner ?? runAgent

@@ -72,6 +72,31 @@ async function openSample(): Promise<void> {
 }
 
 describe('the application shell', () => {
+  it('writes source immediately when Generate Project is clicked and retains the results', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'cartograph-generate-click-'))
+    scratch.push(root)
+    await fs.cp(SAMPLE_PROJECT, root, { recursive: true, filter: (file) => !file.includes('node_modules') && !file.includes('.cartograph') })
+    const fake = installFakeApi({ projectToOpen: root })
+    render(<App />)
+    await openSample()
+    act(() => useStore.getState().dispatchOperation({ type: 'add_module', module: {
+      id: 'immediate', name: 'Immediate', description: 'A generated module', responsibilities: [],
+      directory: 'src/immediate', publicInterface: []
+    } }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Generate Project' }))
+      await waitFor(() => expect(useStore.getState().applyResult).not.toBeNull(), { timeout: 30000 })
+      await waitFor(() => expect(useStore.getState().busy).toBe('idle'), { timeout: 30000 })
+    })
+    expect(await fs.readFile(path.join(root, 'src/immediate/index.ts'), 'utf8')).toContain('Immediate')
+    const write = fake.calls.find((call) => call.method === 'applyChanges')!
+    expect(write.args[0]).toBe(root)
+    expect(write.args[1]).toMatchObject({ mode: 'in-place', createBackup: true, validate: true })
+    expect(useStore.getState().dialog).toBeNull()
+    expect(useStore.getState().bottomTab).toBe('results')
+    expect(useStore.getState().operations).toEqual([])
+    expect(useStore.getState().original!.modules.some((m) => m.files.includes('src/immediate/index.ts'))).toBe(true)
+  }, 60000)
   it('resizes the inspector, retains width across selections, and records no architectural edit', async () => {
     const rendered = render(<App />)
     await openSample()
@@ -300,6 +325,7 @@ describe('making a structural change through the UI', () => {
 
     const result = useStore.getState().applyResult!
     expect(result.errors).toEqual([])
+    expect(useStore.getState().appliedOperationIds).toEqual([])
     expect(result.renamed).toEqual([
       { from: 'src/auth/session.ts', to: 'src/session-management/session.ts' }
     ])
@@ -324,6 +350,9 @@ describe('making a structural change through the UI', () => {
     })
     expect(screen.getByText(/check\(s\) passed/)).toBeTruthy()
     expect(screen.getAllByText('passed').length).toBeGreaterThanOrEqual(2)
+    await act(async () => { await useStore.getState().plan(false) })
+    expect(useStore.getState().changeSet!.outcomes.some((o) => o.status === 'failed')).toBe(false)
+    expect(useStore.getState().changeSet!.changes.some((c) => c.kind === 'rename')).toBe(true)
   }, 180_000)
 
   it('reports an unsupported operation in the UI instead of claiming success', async () => {

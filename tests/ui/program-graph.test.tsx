@@ -56,6 +56,38 @@ it('shows all five sections and creates a user contract as a pending structured 
   expect(state.original!.program.contracts).toHaveLength(observedCount)
 })
 
+it.each([
+  ['Add interface function', 'Interface Function', true, false],
+  ['Add data structure', 'Data Structure', true, true],
+  ['Add private implementation', 'Private Implementation', false, false]
+])('opens properties immediately from %s without requiring a signature', (button, title, publicApi, dataType) => {
+  const observed = useStore.getState().original!
+  const rendered = render(<Inspector />)
+  expect(screen.queryByText('Add function or data structure')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: String(button) }))
+  const inspector = within(rendered.container.querySelector('.pane--right') as HTMLElement)
+  expect(inspector.getByText(String(title))).toBeTruthy()
+  const description = inspector.getByLabelText('Description')
+  expect(document.activeElement).toBe(description)
+  const suggestion = inspector.getByLabelText('Suggested signature (optional)')
+  expect(suggestion).toHaveProperty('value', '')
+  expect(suggestion.hasAttribute('required')).toBe(false)
+  const id = useStore.getState().selectedSymbolId!
+  const draft = useStore.getState().desired!.program.symbols.find((s) => s.id === id)!
+  expect(draft.publiclyAccessible).toBe(publicApi)
+  expect(draft.description).toBe('')
+  expect(draft.sourceText).toBe('')
+  expect(draft.signature).toBe('')
+  if (dataType) expect(inspector.getByLabelText('Data structure kind')).toBeTruthy()
+  else expect(inspector.getByRole('button', { name: 'Add parameter' })).toBeTruthy()
+  fireEvent.change(description, { target: { value: 'Validate payment inputs and return a useful error for invalid values.' } })
+  fireEvent.blur(description)
+  expect(useStore.getState().desired!.program.symbols.find((s) => s.id === id)?.description).toContain('Validate payment')
+  expect(useStore.getState().original).toBe(observed)
+  expect(useStore.getState().operations[0].type).toBe('add_symbol')
+  expect(useStore.getState().operations.at(-1)?.type).toBe('update_symbol')
+})
+
 it('edits an assertion contract and displays potential consumer impact while preserving observed facts', () => {
   const state = useStore.getState()
   const contract = state.original!.program.contracts.find((c) => c.enforcement && state.original!.program.symbols.find((s) => s.id === c.symbolId)?.name === 'withdraw')!

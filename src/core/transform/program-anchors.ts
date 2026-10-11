@@ -38,11 +38,14 @@ export async function refreshProgramAnchors(graph: ArchitectureGraph, workspace:
     idMap.set(actual.id, symbol.id)
     actual.fields.forEach((f) => fieldMap.set(f.id, symbol.fields.find((s) => s.name === f.name)?.id ?? f.id))
     const changedSource = actual.sourceText !== symbol.sourceText
+    const newDeclaration = !symbol.sourceText && !symbol.definition
     return { ...symbol, ...(changedSource ? { signature: actual.signature, parameters: actual.parameters, returnType: actual.returnType,
       scope: actual.scope, qualifiedName: actual.qualifiedName, kind: actual.kind, definition: actual.definition } : {}),
       source: actual.source, nameSource: actual.nameSource, signatureSource: actual.signatureSource, bodySource: actual.bodySource,
-      sourceText: actual.sourceText, fields: symbol.fields.map((f) => ({ ...f,
-        source: actual.fields.find((a) => a.name === f.name)?.source ?? f.source })) }
+      sourceText: actual.sourceText, fields: newDeclaration ? [
+        ...actual.fields.map((f) => ({ ...f, id: fieldMap.get(f.id)! })),
+        ...symbol.fields.filter((f) => !actual.fields.some((a) => a.name === f.name))
+      ] : symbol.fields.map((f) => ({ ...f, source: actual.fields.find((a) => a.name === f.name)?.source ?? f.source })) }
   })
   const contractMap = new Map<string, string>()
   const contracts = graph.program.contracts.map((contract) => {
