@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "tests/ui/**/*",
+    "src/**/*"
+  ],
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "outDir": "node_modules/.tmp/tsc-test-ui",
+    "jsx": "react-jsx",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "node"
+    ]
+  }
+}

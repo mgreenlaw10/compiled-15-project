@@ -1,0 +1,33 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "src/renderer/**/*",
+    "src/preload/**/*",
+    "src/shared/**/*"
+  ],
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "outDir": "node_modules/.tmp/tsc-web",
+    "jsx": "react-jsx",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "node"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": [
+        "src/shared/*"
+      ],
+      "@renderer/*": [
+        "src/renderer/*"
+      ]
+    }
+  }
+}

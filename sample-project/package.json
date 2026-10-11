@@ -1,0 +1,11 @@
+{
+  "name": "shop-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A small TypeScript service used as Cartograph's sample project.",
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "tsc --noEmit"
+  }
+}
