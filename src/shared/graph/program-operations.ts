@@ -32,7 +32,11 @@ export function applyProgramOperation(graph: ArchitectureGraph, op: GraphOperati
     }
     case 'add_symbol':
       if (program.symbols.some((s) => s.id === op.symbol.id)) return invalid('Symbol ID already exists.')
-      if (!module.files.includes(op.symbol.source.file)) return invalid('Choose a file owned by this module.')
+      if (!module.files.includes(op.symbol.source.file)) {
+        if (op.symbol.sourceText || op.symbol.definition || op.symbol.source.start !== 0 || op.symbol.source.end !== 0 ||
+          !op.symbol.source.file || /(^|\/)\.\.(\/|$)|^\/|^[A-Za-z]:|\\/.test(op.symbol.source.file)) return invalid('Choose a file owned by this module.')
+        modules = modules.map((m) => m.id === module.id ? { ...m, files: [...m.files, op.symbol.source.file] } : m)
+      }
       program = { ...program, symbols: [...program.symbols, { ...op.symbol, version: 1 }] }; break
     case 'update_implementation':
       modules = modules.map((m) => m.id === module.id ? { ...m, components: { ...m.components,

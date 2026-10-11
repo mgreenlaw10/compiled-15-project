@@ -42,7 +42,11 @@ function createClient(config: AiConfig): AiClient {
       apiKey: config.apiKey,
       model,
       // Valid JSON is dependable; strict schema adherence is not.
-      jsonMode: 'object'
+      jsonMode: 'object',
+      // Flash's thinking mode holds no state between turns: whatever reasoning
+      // it produced has to come back on the assistant message, or the next
+      // request is rejected with a 400 and an agent run stops after one reply.
+      replayReasoning: true
     })
   }
 }

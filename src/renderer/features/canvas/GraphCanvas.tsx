@@ -235,6 +235,7 @@ export function GraphCanvas(): JSX.Element {
         <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="#2a2f38" />
         <Controls showInteractive={false} />
         <MiniMap
+          position="top-right"
           pannable
           zoomable
           nodeColor={(node) =>

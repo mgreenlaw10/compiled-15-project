@@ -49,6 +49,7 @@ import { VirtualWorkspace } from './workspace'
 import { executeProgramOperation } from './ops/program-ops'
 import { analyzeImpact } from '../../shared/graph/impact'
 import { refreshProgramAnchors } from './program-anchors'
+import { prepareDraftOperations } from './draft-operations'
 
 /**
  * The hook the AI agent plugs into. Keeping it an interface means the engine
@@ -110,7 +111,13 @@ async function runOperation(
       }
       return result
     }
-    case 'add_symbol': case 'update_implementation':
+    case 'add_symbol':
+      if (!op.symbol.description.trim() && !op.symbol.signature.trim() && !op.symbol.fields.length) {
+        return unsupported('Describe what the new symbol should do in its properties before generating. A signature is optional.')
+      }
+      if (ai?.available) return ai.execute(op, ctx)
+      return unsupported(`This operation needs an AI model to implement the requested behavior. ${ai?.unavailableReason ?? 'No model provider API key is configured.'}`)
+    case 'update_implementation':
       if (ai?.available) return ai.execute(op, ctx)
       return unsupported(`This operation needs an AI model to implement the requested behavior. ${ai?.unavailableReason ?? 'No model provider API key is configured.'}`)
     case 'add_module':
@@ -179,6 +186,8 @@ export async function planChanges(
 
   const workspace = new VirtualWorkspace(graph.projectRoot, sourceFiles)
   const startingGraph = graph
+  const prepared = prepareDraftOperations(graph, operations)
+  const creationResults = new Map<string, OpResult>()
   let current = graph
 
   const outcomes: OperationOutcome[] = []
@@ -209,7 +218,8 @@ export async function planChanges(
     const label = OPERATION_LABELS[op.type]
     breakingChanges.push(...analyzeImpact(startingGraph, op).map((impact) =>
       `${startingGraph.modules.find((m) => m.id === impact.moduleId)?.name ?? impact.moduleId}: ${impact.reason}`))
-    const reduced = applyOperation(current, op)
+    const effective = prepared.creations.get(op.id) ?? op
+    const reduced = applyOperation(current, effective)
     if (!reduced.ok) {
       log.error(`${label}: ${reduced.error}`)
       outcomes.push({
@@ -233,7 +243,15 @@ export async function planChanges(
 
     let result: OpResult
     try {
-      result = await runOperation(op, ctx, ai)
+      const creationId = prepared.includedEdits.get(op.id)
+      const creation = creationId ? creationResults.get(creationId) : undefined
+      if (creation) {
+        result = { ...creation, message: `These properties were included in the new symbol's generation. ${creation.message}` }
+        for (const path of creation.touchedPaths) {
+          const content = workspace.read(path)
+          if (content !== null) workspace.write(path, content, { operationId: op.id, reason: 'Include new symbol properties' })
+        }
+      } else result = await runOperation(effective, ctx, ai)
     } catch (error) {
       result = failed(
         `${label} threw while running: ${(error as Error).message}`
@@ -252,6 +270,7 @@ export async function planChanges(
         result.warnings.push(`Could not refresh source bindings after this edit: ${(error as Error).message}. Reanalyze before applying further component edits.`)
       }
     }
+    if (op.type === 'add_symbol') creationResults.set(op.id, result)
 
     for (const warning of result.warnings) log.warn(`${label}: ${warning}`)
     breakingChanges.push(...(result.breakingChanges ?? []))

@@ -193,7 +193,7 @@ export function diffArchitectures(
     if (!before) operations.push({ type: 'add_symbol', moduleId: owner.id, symbol })
     else {
       const changes: Extract<GraphOperationBody, { type: 'update_symbol' }>['changes'] = {}
-      for (const key of ['name', 'signature', 'parameters', 'returnType', 'accessibility', 'description', 'fields'] as const) {
+      for (const key of ['name', 'kind', 'signature', 'parameters', 'returnType', 'accessibility', 'description', 'fields'] as const) {
         if (JSON.stringify(before[key]) !== JSON.stringify(symbol[key])) Object.assign(changes, { [key]: symbol[key] })
       }
       if (Object.keys(changes).length) operations.push({ type: 'update_symbol', moduleId: owner.id, symbolId: symbol.id, changes })

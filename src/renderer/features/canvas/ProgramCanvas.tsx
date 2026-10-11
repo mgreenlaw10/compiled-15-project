@@ -4,9 +4,11 @@ import { useStore } from '../../state/store'
 import type { ModuleNode } from '../../../shared/types/architecture'
 import { isCallable, isDataType } from '../../../shared/graph/program'
 import { collapseFlowEdges, DependencyDetailEdge, underlyingFlowEdges } from './edges'
+import { ProgramNodeView } from './ProgramNodeView'
 
 const colors = { call: '#c08cf5', type: '#5fc6ae', field_read: '#e3ac67', field_write: '#e3ac67', contract: '#e482a7' }
 const edgeTypes = { dependencyDetail: DependencyDetailEdge }
+const nodeTypes = { program: ProgramNodeView }
 export function ProgramCanvas({ module, file }: { module: ModuleNode; file?: string }): JSX.Element {
   const graph = useStore((s) => s.desired)!
   const layout = useStore((s) => s.layout)
@@ -29,8 +31,10 @@ export function ProgramCanvas({ module, file }: { module: ModuleNode; file?: str
       module.files.forEach((name, i) => {
         const members = symbols.filter((s) => s.source.file === name)
         nodes.push({ id: name, position: layout.positions[`file:${name}`] ?? { x: (i % 3) * 300, y: Math.floor(i / 3) * 150 },
-          data: { label: `${name}\n${members.filter(isCallable).length} functions · ${members.filter(isDataType).length} types` },
-          style: { whiteSpace: 'pre-wrap', width: 255, background: '#202732', color: '#dce3ed', borderColor: '#4d6a94' } })
+          type: 'program',
+          data: { label: name.split('/').pop() ?? name, badge: 'file',
+            detail: `${name} · ${members.filter(isCallable).length} functions · ${members.filter(isDataType).length} types` },
+          style: { width: 210, background: '#202732', color: '#dce3ed', borderColor: '#4d6a94' } })
       })
       const paired = new Set<string>()
       for (const relation of graph.program.relationships) {
@@ -49,36 +53,40 @@ export function ProgramCanvas({ module, file }: { module: ModuleNode; file?: str
         edges.push({ id: `file-relation:${i}`, source: relation.fromFile, target: relation.toFile, label: relation.kind, style: { stroke: '#4d6a94' } })
       }
       graph.program.contracts.filter((c) => c.moduleId === module.id && !c.symbolId).forEach((c, i) => nodes.push({
-        id: `contract:${c.id}`, position: layout.positions[`file:contract:${c.id}`] ?? { x: 950, y: i * 125 },
-        data: { label: `Module ${c.category}\n${c.expression ?? c.description}\n${c.provenance} · ${c.verification}` },
-        style: { whiteSpace: 'pre-wrap', width: 240, fontSize: 11, background: '#30232e', color: '#dce3ed', borderColor: '#e482a7' }
+        id: `contract:${c.id}`, type: 'program', position: layout.positions[`file:contract:${c.id}`] ?? { x: 950, y: i * 125 },
+        data: { label: c.category.replaceAll('_', ' '), badge: 'module contract',
+          detail: `${c.expression ?? c.description} · ${c.provenance} · ${c.verification}` },
+        style: { width: 190, fontSize: 11, background: '#30232e', color: '#dce3ed', borderColor: '#e482a7' }
       }))
     } else {
       const boundary = graph.program.relationships.filter((r) => ids.has(r.fromSymbolId) && r.toSymbolId && !ids.has(r.toSymbolId))
       const extra = [...new Set(boundary.map((r) => r.toSymbolId!))].map((id) => symbolById.get(id)).filter((s) => !!s)
       const all = [...symbols, ...extra]
-      all.forEach((s, i) => nodes.push({ id: s.id, position: layout.positions[`symbol:${s.id}`] ?? { x: (i % 3) * 310, y: Math.floor(i / 3) * 150 },
-        data: { label: `${s.kind} ${s.qualifiedName}\n${s.signature}\n${s.accessibility} · ${s.source.file}:${s.source.line}` },
-        style: { whiteSpace: 'pre-wrap', width: 270, fontSize: 11, background: ids.has(s.id) ? '#202732' : '#30303b', color: '#dce3ed',
+      all.forEach((s, i) => nodes.push({ id: s.id, type: 'program', position: layout.positions[`symbol:${s.id}`] ?? { x: (i % 3) * 310, y: Math.floor(i / 3) * 150 },
+        data: { label: s.name, badge: s.kind.replaceAll('_', ' '),
+          detail: `${s.qualifiedName} — ${s.signature} · ${s.accessibility} · ${s.source.file}:${s.source.line}` },
+        style: { width: 190, fontSize: 11, background: ids.has(s.id) ? '#202732' : '#30303b', color: '#dce3ed',
           border: `1px ${ids.has(s.id) ? 'solid' : 'dashed'} ${isDataType(s) ? '#5fc6ae' : '#c08cf5'}` } }))
       const fields = all.flatMap((s) => s.fields.map((f) => ({ ...f, owner: s })))
-      fields.forEach((f, i) => nodes.push({ id: f.id, position: layout.positions[`symbol:${f.id}`] ?? { x: 950, y: i * 110 },
-        data: { label: `field ${f.owner.qualifiedName}.${f.name}\n${f.type} · ${f.accessibility}\n${f.source.file}:${f.source.line}` },
-        style: { whiteSpace: 'pre-wrap', width: 245, fontSize: 11, background: '#202732', color: '#dce3ed', borderColor: '#e3ac67' } }))
+      fields.forEach((f, i) => nodes.push({ id: f.id, type: 'program', position: layout.positions[`symbol:${f.id}`] ?? { x: 950, y: i * 110 },
+        data: { label: f.name, badge: 'field',
+          detail: `${f.owner.qualifiedName}.${f.name}: ${f.type} · ${f.accessibility} · ${f.source.file}:${f.source.line}` },
+        style: { width: 170, fontSize: 11, background: '#202732', color: '#dce3ed', borderColor: '#e3ac67' } }))
       const nodeIds = new Set(nodes.map((s) => s.id))
       for (const r of graph.program.relationships.filter((r) => nodeIds.has(r.fromSymbolId) && r.toSymbolId && nodeIds.has(r.toSymbolId))) {
         if (r.kind === 'contract') continue
         const color = colors[r.kind as keyof typeof colors] ?? '#4d6a94'
-        edges.push({ id: r.id, source: r.fromSymbolId, target: r.toFieldId && nodeIds.has(r.toFieldId) ? r.toFieldId : r.toSymbolId!, label: r.kind + (r.conditional ? ' (conditional)' : ''),
+        edges.push({ id: r.id, source: r.fromSymbolId, target: r.toFieldId && nodeIds.has(r.toFieldId) ? r.toFieldId : r.toSymbolId!, label: r.kind,
           style: { stroke: color, strokeDasharray: r.resolution !== 'resolved' ? '5 4' : undefined }, markerEnd: { type: MarkerType.ArrowClosed, color } })
       }
       const outgoing = graph.program.relationships.filter((r) => ids.has(r.fromSymbolId))
       const contractIds = new Set(outgoing.filter((r) => r.contractId).map((r) => r.contractId!))
       const contracts = graph.program.contracts.filter((c) => c.symbolId && ids.has(c.symbolId) || contractIds.has(c.id))
       contracts.forEach((c, i) => {
-        nodes.push({ id: `contract:${c.id}`, position: layout.positions[`symbol:contract:${c.id}`] ?? { x: 1250, y: i * 125 },
-          data: { label: `${c.category}\n${c.expression ?? c.description}\n${c.provenance} · ${c.verification}` },
-          style: { whiteSpace: 'pre-wrap', width: 240, fontSize: 11, background: '#30232e', color: '#dce3ed', borderColor: '#e482a7' } })
+        nodes.push({ id: `contract:${c.id}`, type: 'program', position: layout.positions[`symbol:contract:${c.id}`] ?? { x: 1250, y: i * 125 },
+          data: { label: c.category.replaceAll('_', ' '), badge: 'contract',
+            detail: `${c.expression ?? c.description} · ${c.provenance} · ${c.verification}` },
+          style: { width: 190, fontSize: 11, background: '#30232e', color: '#dce3ed', borderColor: '#e482a7' } })
         if (c.symbolId && nodeIds.has(c.symbolId)) edges.push({ id: `contract:${c.id}`, source: c.fieldId ?? c.symbolId, target: `contract:${c.id}`, label: 'specification', style: { stroke: '#e482a7', strokeDasharray: '5 4' } })
       })
       for (const r of outgoing.filter((r) => r.contractId)) edges.push({ id: r.id, source: r.fromSymbolId, target: `contract:${r.contractId}`, label: 'contract reliance',
@@ -88,11 +96,12 @@ export function ProgramCanvas({ module, file }: { module: ModuleNode; file?: str
       for (const r of unresolved) {
         const id = `unresolved:${r.fromSymbolId}:${r.targetName}`
         if (!unknownIds.has(id)) {
-          nodes.push({ id, position: layout.positions[`symbol:${id}`] ?? { x: 1550, y: unknownIds.size * 100 },
-            data: { label: `${r.targetName}\nUnresolved ${r.kind}` }, style: { whiteSpace: 'pre-wrap', width: 230, fontSize: 11, background: '#292c33', color: '#dce3ed', border: '1px dashed #8b93a3' } })
+          nodes.push({ id, type: 'program', position: layout.positions[`symbol:${id}`] ?? { x: 1550, y: unknownIds.size * 100 },
+            data: { label: r.targetName, badge: `unresolved ${r.kind}`, detail: `Unresolved ${r.kind} of ${r.targetName}` },
+            style: { width: 180, fontSize: 11, background: '#292c33', color: '#dce3ed', border: '1px dashed #8b93a3' } })
           unknownIds.add(id)
         }
-        edges.push({ id: r.id, source: r.fromSymbolId, target: id, label: `${r.kind} (unresolved)`, style: { stroke: '#8b93a3', strokeDasharray: '5 4' } })
+        edges.push({ id: r.id, source: r.fromSymbolId, target: id, label: r.kind, style: { stroke: '#8b93a3', strokeDasharray: '5 4' } })
       }
     }
     return { nodes, edges }
@@ -113,7 +122,7 @@ export function ProgramCanvas({ module, file }: { module: ModuleNode; file?: str
       {file && <><span>›</span><span className="mono">{file}</span></>}
       <span className="hint">{file ? 'Source structure' : 'Module structure'} · {contracts.length} contracts</span>
     </div>
-    <ReactFlow key={`${module.id}:${file ?? ''}`} nodes={nodes} edges={displayedEdges} edgeTypes={edgeTypes} onNodesChange={onNodesChange} fitView
+    <ReactFlow key={`${module.id}:${file ?? ''}`} nodes={nodes} edges={displayedEdges} edgeTypes={edgeTypes} nodeTypes={nodeTypes} onNodesChange={onNodesChange} fitView
       onNodeClick={(_event, node) => selectNode(node.id)}
       onNodeDoubleClick={(_event, node) => {
         if (node.id.startsWith('contract:')) return

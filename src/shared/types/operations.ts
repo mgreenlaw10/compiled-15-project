@@ -21,7 +21,7 @@ export interface UpdateSymbolOperation {
   type: 'update_symbol'
   moduleId: ModuleId
   symbolId: string
-  changes: Partial<Pick<ProgramSymbol, 'name' | 'signature' | 'parameters' | 'returnType' | 'accessibility' | 'description' | 'fields'>>
+  changes: Partial<Pick<ProgramSymbol, 'name' | 'kind' | 'signature' | 'parameters' | 'returnType' | 'accessibility' | 'description' | 'fields'>>
   expectedVersion?: number
 }
 export interface AddSymbolOperation { type: 'add_symbol'; moduleId: ModuleId; symbol: ProgramSymbol }

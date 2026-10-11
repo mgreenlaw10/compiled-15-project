@@ -143,6 +143,39 @@ describe('the Luminal client', () => {
     expect(stub.bodies[0].model).toBe('deepseek-ai/DeepSeek-V4.1-Flash')
   })
 
+  it('sends reasoning back on the next turn, so a tool-using run survives it', async () => {
+    const stub = stubFetch({ choices: [{ finish_reason: 'stop', message: { content: 'done' } }] })
+    const client = luminalProvider.createClient({
+      provider: 'luminal',
+      apiKey: 'lum-secret',
+      model: '',
+      effort: 'high',
+      maxFileReads: 10
+    })
+
+    await client.chat.complete({
+      system: 'sys',
+      messages: [
+        { role: 'user', content: 'edit the file' },
+        {
+          role: 'assistant',
+          content: [
+            { type: 'thinking', thinking: 'I should read it first' },
+            { type: 'tool_use', id: 'c1', name: 'read_file', input: { path: 'a.ts' } }
+          ]
+        },
+        {
+          role: 'tool_results',
+          results: [{ toolUseId: 'c1', content: 'export const a = 1', isError: false }]
+        }
+      ],
+      maxTokens: 64
+    })
+
+    const sent = stub.bodies[0].messages as { role: string; reasoning_content?: string }[]
+    expect(sent[2].reasoning_content).toBe('I should read it first')
+  })
+
   it('reaches Luminal through the shared facade when configured', () => {
     const client = createAiClient({
       provider: 'luminal',
@@ -354,6 +387,44 @@ describe('the OpenAI-compatible transport', () => {
     const sent = stub.bodies[0].messages as { role: string; content: string }[]
     expect(sent[2].content).toBe('the answer')
     expect(JSON.stringify(stub.bodies[0])).not.toContain('internal deliberation')
+  })
+
+  it('returns reasoning in its own field for a host whose thinking mode needs it', async () => {
+    const stub = stubFetch({ choices: [{ message: { content: 'ok' } }] })
+    const replaying = createOpenAiCompatibleModel({
+      baseUrl: 'https://flash.example/v1',
+      apiKey: 'test-key',
+      model: 'test-model',
+      replayReasoning: true
+    })
+    await replaying.complete({
+      system: 'sys',
+      messages: [
+        { role: 'user', content: 'go' },
+        {
+          role: 'assistant',
+          content: [
+            { type: 'thinking', thinking: 'internal deliberation' },
+            { type: 'tool_use', id: 'c1', name: 'read_file', input: { path: 'a.ts' } }
+          ]
+        },
+        {
+          role: 'tool_results',
+          results: [{ toolUseId: 'c1', content: 'export const a = 1', isError: false }]
+        }
+      ],
+      maxTokens: 100
+    })
+    const sent = stub.bodies[0].messages as {
+      role: string
+      content: string | null
+      reasoning_content?: string
+      tool_calls?: unknown[]
+    }[]
+    // Back in the field it came from, never as the assistant's reply.
+    expect(sent[2].reasoning_content).toBe('internal deliberation')
+    expect(sent[2].content).toBeNull()
+    expect(sent[2].tool_calls).toHaveLength(1)
   })
 
   it('exposes a reasoning field as a thinking block', async () => {

@@ -188,3 +188,10 @@
 .program-parameter, .program-field { border-left: 2px solid #4d6a94; padding-left: 7px; margin-bottom: 6px; }
 .program-evidence { margin-top: 10px; border-left: 2px solid #c08cf5; padding-left: 8px; }
 .program-source { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; max-height: 360px; overflow: auto; }
+
+/* Source-graph nodes: one line, the thing's own name. Detail lives in the inspector. */
+.pnode { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.pnode-badge { flex: none; color: var(--text-dim, #8b93a3); font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; }
+.pnode-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.program-detail { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; color: var(--text-dim, #8b93a3); }
+.program-member { display: flex; align-items: baseline; gap: 6px; margin: 2px 0; }
