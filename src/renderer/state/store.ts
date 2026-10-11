@@ -82,7 +82,10 @@ export interface AppState {
 
   selectedModuleId: ModuleId | null
   selectedFile: string | null
+  selectedOperationId: string | null
+  deskMode: 'architecture' | 'review'
   dialog: DialogName
+  addModulePosition: NodePosition | null
   busy: Busy
   error: string | null
   notice: string | null
@@ -90,7 +93,7 @@ export interface AppState {
   dirty: boolean
 
   logs: LogEvent[]
-  bottomTab: 'activity' | 'changes' | 'results'
+  bottomTab: 'preview' | 'module' | 'activity' | 'changes' | 'results'
 
   changeSet: ChangeSet | null
   diffs: DiffPreview[] | null
@@ -117,6 +120,8 @@ export interface AppState {
   relayout(): void
   select(id: ModuleId | null): void
   selectFile(path: string | null): void
+  selectOperation(id: string): void
+  setDeskMode(mode: AppState['deskMode']): void
 
   // --- persistence -----------------------------------------------------
   saveDocument(): Promise<void>
@@ -136,7 +141,7 @@ export interface AppState {
 
   // --- settings & chrome ----------------------------------------------
   updateSettings(patch: Partial<AppSettings>): Promise<void>
-  openDialog(name: DialogName): void
+  openDialog(name: DialogName, position?: NodePosition): void
   setBottomTab(tab: AppState['bottomTab']): void
   pushLog(event: LogEvent): void
   clearLogs(): void
@@ -174,14 +179,17 @@ export const useStore = create<AppState>((set, get) => ({
 
   selectedModuleId: null,
   selectedFile: null,
+  selectedOperationId: null,
+  deskMode: 'review',
   dialog: null,
+  addModulePosition: null,
   busy: 'idle',
   error: null,
   notice: null,
   dirty: false,
 
   logs: [],
-  bottomTab: 'activity',
+  bottomTab: 'preview',
 
   changeSet: null,
   diffs: null,
@@ -273,6 +281,8 @@ Continue?`
         appliedOperationIds: [],
         selectedModuleId: result.graph.modules[0]?.id ?? null,
         selectedFile: null,
+        selectedOperationId: null,
+        bottomTab: 'preview',
         dirty: false,
         busy: 'idle'
       })
@@ -324,6 +334,7 @@ Continue?`
     set({
       desired: result.graph,
       operations: [...operations, op],
+      selectedOperationId: op.id,
       layout: {
         ...layout,
         positions: fillMissingPositions(result.graph, layout.positions),
@@ -382,11 +393,25 @@ Continue?`
   },
 
   select(id) {
-    set({ selectedModuleId: id, selectedFile: null })
+    set({ selectedModuleId: id, selectedFile: null, ...(id ? { bottomTab: 'module' as const } : {}) })
   },
 
   selectFile(path) {
-    set({ selectedFile: path })
+    set({ selectedFile: path, bottomTab: 'module' })
+  },
+
+  selectOperation(id) {
+    const op = get().operations.find((candidate) => candidate.id === id)
+    if (!op) return
+    const moduleId = op.type === 'add_module' ? op.module.id
+      : 'toModuleId' in op ? op.toModuleId
+        : 'moduleId' in op ? op.moduleId : op.to
+    set({ selectedOperationId: id, selectedModuleId: moduleId, selectedFile: null,
+      bottomTab: 'preview', deskMode: 'review' })
+  },
+
+  setDeskMode(mode) {
+    set({ deskMode: mode, bottomTab: mode === 'review' ? 'preview' : 'module' })
   },
 
   async saveDocument() {
@@ -485,7 +510,7 @@ Continue?`
       return
     }
 
-    set({ busy: 'planning', error: null, bottomTab: 'changes', diffs: null })
+    set({ busy: 'planning', error: null, bottomTab: 'changes', deskMode: 'review', diffs: null })
     try {
       const changeSet = await window.cartograph.planChanges(project.root, {
         graph: original,
@@ -575,8 +600,8 @@ Continue?`
     }
   },
 
-  openDialog(name) {
-    set({ dialog: name })
+  openDialog(name, position) {
+    set({ dialog: name, addModulePosition: name === 'add-module' ? position ?? null : null })
   },
 
   setBottomTab(tab) {

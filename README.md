@@ -59,7 +59,7 @@ Other scripts:
 | `npm run dev` | Dev server + Electron, with hot reload |
 | `npm run build` | Type check, then bundle main / preload / renderer into `out/` |
 | `npm start` | Run the built app |
-| `npm test` | The whole test suite (116 tests) |
+| `npm test` | The whole test suite (123 tests) |
 | `npm run typecheck` | Type check all three TypeScript projects |
 | `npm run smoke` | Boot the built app and fail if the renderer logs an error |
 | `npm run verify` | typecheck → test → build → smoke |
@@ -103,12 +103,12 @@ fresh checkout with no install step.
    dragging a node around: the status bar does **not** change, because node
    positions are visual state and can never cause a code change.
 
-4. **Generate.** `Generate Project`.
+4. **Generate.** `Generate plan`.
 
-   The Changes tab fills in with the plan, per operation:
+   The Plan tab fills in with the plan, per operation:
 
-   - `Create module` → **applied** — created `src/session-management/index.ts`
-   - `Move file` → **applied** — *"Moved src/auth/session.ts to
+   - `Create module` → **planned** — created `src/session-management/index.ts`
+   - `Move file` → **planned** — *"Moved src/auth/session.ts to
      src/session-management/session.ts and rewrote 7 import specifier(s) in 8
      file(s)."*
 
@@ -168,6 +168,20 @@ asserts, step by step, on every test run.
   written inside a module point at files inside it — and labelled with its basis
   (`static`, `heuristic`, `ai` or `user`).
 
+### Review desk
+
+A light workspace with a pending-change sidebar, a compact architecture map,
+and a review panel beneath it. Select an edit to compare its current and desired
+architecture at that point in the edit log. After **Generate plan**, choose an
+edit and a file to compare the real source before and after the complete plan.
+The **Plan** tab keeps operation outcomes, warnings, diffs, and the write action
+together; **Results** reports what reached disk and how validation ran.
+
+Switch the sidebar to **Project** for module search and the file explorer.
+Selecting a module opens **Module details** below the map. **Architecture**
+gives the map more space, and **Review changes** returns to the change preview.
+Use **Center selected** to inspect a module at a readable zoom.
+
 ### The graph editor
 
 Pan, zoom, drag, select, expand a node to see its files. Create, rename and
@@ -175,6 +189,16 @@ delete modules; edit descriptions and responsibilities; draw and delete
 dependency edges; move files between modules by dragging them from the explorer
 or the inspector onto a node; move individual exported symbols between modules.
 Save the architecture into the project and reload it later.
+
+Right-click the canvas to add a module at that position, fit the graph to the
+view, or run auto layout. Right-click a module to show/hide its files, focus its
+connections, or open the delete dialog. Right-click an arrow to inspect either
+endpoint or remove the dependency from the desired graph.
+
+Arrows use their source module's color, matching the dot beside its name.
+Use **Focus connections** to dim modules and arrows unrelated to the selected
+module; click it again to restore the full view. These view controls never
+record a code change.
 
 Verified edges are solid; edges you declared that no import backs are dashed and
 labelled *declared*. Modules with changes that have not reached the source code
@@ -413,7 +437,7 @@ the truth.
 npm test
 ```
 
-**116 tests across 6 files.** They use the real analyzer, the real engine and
+**123 tests across 6 files.** They use the real analyzer, the real engine and
 the real compiler — nothing about the pipeline is mocked.
 
 | File | What it covers |

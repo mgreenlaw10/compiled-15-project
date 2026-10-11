@@ -1,17 +1,5 @@
-/**
- * Top toolbar and the status bar underneath the workspace.
- *
- * The status bar is where the application states, in one line, whether the
- * graph currently matches the code. That is the single most important piece of
- * information in the tool, so it is always on screen.
- */
-
-import {
-  useArchitectureDiffText,
-  usePendingSummary,
-  useStore
-} from '../state/store'
-import { Badge, plural } from './common'
+import { useArchitectureDiffText, usePendingSummary, useStore } from '../state/store'
+import { plural } from './common'
 
 export function Toolbar(): JSX.Element {
   const project = useStore((s) => s.project)
@@ -19,100 +7,39 @@ export function Toolbar(): JSX.Element {
   const busy = useStore((s) => s.busy)
   const dirty = useStore((s) => s.dirty)
   const settings = useStore((s) => s.settings)
-
+  const mode = useStore((s) => s.deskMode)
+  const tab = useStore((s) => s.bottomTab)
+  const changeSet = useStore((s) => s.changeSet)
+  const applyResult = useStore((s) => s.applyResult)
+  const setMode = useStore((s) => s.setDeskMode)
+  const setTab = useStore((s) => s.setBottomTab)
   const openProject = useStore((s) => s.openProject)
-  const analyze = useStore((s) => s.analyze)
   const saveDocument = useStore((s) => s.saveDocument)
-  const relayout = useStore((s) => s.relayout)
   const openDialog = useStore((s) => s.openDialog)
   const plan = useStore((s) => s.plan)
   const cancel = useStore((s) => s.cancel)
-
   const pending = usePendingSummary()
+  const hasPending = pending.structural + pending.metadata > 0
   const idle = busy === 'idle'
-  const hasProject = project !== null
+  const generating = tab === 'results' || tab === 'changes'
 
   return (
     <header className="toolbar">
-      <div className="brand">
-        <strong>Cartograph</strong>
-        <span>visual codebase editor</span>
+      <div className="brand"><span className="brand-mark" aria-hidden="true">C</span><strong>Cartograph</strong><span className="brand-slash">/</span><span className="project-breadcrumb" title={project?.root}>{project?.name ?? 'Workspace'}</span></div>
+      <nav className="workflow" aria-label="Workspace stages">
+        <button aria-current={mode === 'architecture' ? 'step' : undefined} onClick={() => setMode('architecture')}><span>01</span> Architecture</button>
+        <span className="workflow-chevron" aria-hidden="true">›</span>
+        <button aria-current={mode === 'review' && !generating ? 'step' : undefined} onClick={() => setMode('review')}><span>02</span> Review changes</button>
+        <span className="workflow-chevron" aria-hidden="true">›</span>
+        <button disabled={!changeSet && (!applyResult || hasPending)} aria-current={mode === 'review' && generating ? 'step' : undefined} onClick={() => { setMode('review'); setTab(applyResult && !hasPending ? 'results' : 'changes') }}><span>03</span> Generate</button>
+      </nav>
+      <div className="toolbar-actions">
+        <button className="btn btn--ghost" onClick={() => void openProject()} disabled={!idle}>Open Project</button>
+        <button className="btn btn--ghost save-action" onClick={() => void saveDocument()} disabled={!idle || !graph} title="Save architecture, layout and edit log">Save Graph{dirty ? ' •' : ''}</button>
+        {!idle ? <button className="btn btn--danger btn--sm" onClick={() => void cancel()}>Cancel {busy}</button> : null}
+        <button className="btn btn--primary" onClick={() => { setMode('review'); void plan(settings?.hasApiKey === true) }} disabled={!idle || !hasPending} title="Preview the source changes before writing files">{busy === 'planning' ? 'Planning…' : 'Generate plan'}<span aria-hidden="true">↗</span></button>
+        <button className="btn btn--ghost settings-action" onClick={() => openDialog('settings')} title={settings?.hasApiKey ? `Settings · ${settings.model}` : 'Settings · no api key'}>Settings</button>
       </div>
-
-      <button className="btn" onClick={() => void openProject()} disabled={!idle}>
-        Open Project
-      </button>
-      <button
-        className="btn"
-        onClick={() => void analyze()}
-        disabled={!idle || !hasProject}
-        title="Re-read the source and rebuild the graph. Unapplied graph edits are discarded."
-      >
-        Analyze
-      </button>
-      <button
-        className="btn"
-        onClick={() => void saveDocument()}
-        disabled={!idle || !graph}
-        title="Write the architecture, the layout and the edit log into the project"
-      >
-        Save Graph{dirty ? ' •' : ''}
-      </button>
-
-      <div className="divider-v" />
-
-      <button
-        className="btn"
-        onClick={() => openDialog('add-module')}
-        disabled={!graph}
-      >
-        Add Module
-      </button>
-      <button
-        className="btn"
-        onClick={relayout}
-        disabled={!graph}
-        title="Re-run the automatic layout. Visual only."
-      >
-        Auto Layout
-      </button>
-
-      <div className="divider-v" />
-
-      <button
-        className="btn btn--primary"
-        onClick={() => void plan(settings?.hasApiKey === true)}
-        disabled={!idle || pending.structural + pending.metadata === 0}
-        title={
-          pending.structural + pending.metadata === 0
-            ? 'Nothing is waiting to be generated'
-            : 'Work out the source changes your graph edits imply'
-        }
-      >
-        Generate Project
-      </button>
-
-      <div className="spacer" />
-
-      {!idle ? (
-        <button className="btn btn--danger btn--sm" onClick={() => void cancel()}>
-          Cancel {busy}
-        </button>
-      ) : null}
-
-      {settings?.hasApiKey ? (
-        <Badge kind="ai" title={`Model: ${settings.model}, effort: ${settings.effort}`}>
-          ai ready
-        </Badge>
-      ) : (
-        <Badge title="Deterministic analysis and refactors work without a key">
-          no api key
-        </Badge>
-      )}
-
-      <button className="btn" onClick={() => openDialog('settings')}>
-        Settings
-      </button>
     </header>
   )
 }
@@ -121,72 +48,23 @@ export function StatusBar(): JSX.Element {
   const project = useStore((s) => s.project)
   const graph = useStore((s) => s.desired)
   const busy = useStore((s) => s.busy)
-  const layout = useStore((s) => s.layout)
   const dirty = useStore((s) => s.dirty)
+  const settings = useStore((s) => s.settings)
+  const openDialog = useStore((s) => s.openDialog)
   const pending = usePendingSummary()
   const diffText = useArchitectureDiffText()
-
   const verified = graph?.edges.filter((e) => e.verified).length ?? 0
   const declared = (graph?.edges.length ?? 0) - verified
-
-  const dotClass =
-    busy !== 'idle'
-      ? 'dot dot--busy'
-      : pending.structural > 0
-        ? 'dot dot--pending'
-        : graph
-          ? 'dot dot--ok'
-          : 'dot'
+  const dotClass = busy !== 'idle' ? 'dot dot--busy' : pending.structural > 0 ? 'dot dot--pending' : graph ? 'dot dot--ok' : 'dot'
 
   return (
     <footer className="statusbar">
-      <span className="status-item">
-        <span className={dotClass} />
-        {busy !== 'idle' ? `${busy}…` : pending.text}
-      </span>
-
-      {graph ? (
-        <>
-          <span className="status-item">
-            {plural(graph.modules.length, 'module')}
-          </span>
-          <span className="status-item" title="Edges backed by real imports">
-            {verified} verified
-          </span>
-          {declared > 0 ? (
-            <span
-              className="status-item"
-              title="Edges you declared that no import backs yet"
-            >
-              {declared} declared
-            </span>
-          ) : null}
-          {diffText && diffText !== 'No architectural changes' ? (
-            <span className="status-item" title="Difference from the analyzed architecture">
-              Δ {diffText}
-            </span>
-          ) : null}
-        </>
-      ) : null}
-
+      <span className="status-item"><span className={dotClass} />{busy !== 'idle' ? `${busy}…` : pending.text}</span>
+      {graph ? <><span className="status-item">{plural(graph.modules.length, 'module')}</span><span className="status-item" title="Edges backed by real imports">{verified} verified</span>{declared ? <span className="status-item" title="Declared dependencies without a source import">{declared} declared</span> : null}{diffText && diffText !== 'No architectural changes' ? <span className="status-item architecture-delta" title="Difference from analyzed architecture">Δ {diffText}</span> : null}</> : null}
       <span className="spacer" />
-
-      {graph ? (
-        <span
-          className="status-item faint"
-          title="Node positions are visual only and never change code"
-        >
-          layout: {layout.algorithm}
-        </span>
-      ) : null}
       {dirty ? <span className="status-item faint">unsaved graph</span> : null}
-      {project ? (
-        <span className="status-item faint mono" title={project.root}>
-          {project.root}
-        </span>
-      ) : (
-        <span className="status-item faint">no project open</span>
-      )}
+      <button className="status-settings" onClick={() => openDialog('settings')} title={settings?.hasApiKey ? `Model: ${settings.model}` : 'Deterministic analysis and refactors work without a key'}>{settings?.hasApiKey ? 'ai ready' : 'no api key'}</button>
+      <span className="status-item faint mono project-status" title={project?.root}>{project?.root ?? 'no project open'}</span>
     </footer>
   )
 }

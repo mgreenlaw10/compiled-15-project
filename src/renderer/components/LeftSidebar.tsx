@@ -124,6 +124,7 @@ function ModuleListSection(): JSX.Element {
       <div style={{ padding: '8px 12px 6px' }}>
         <input
           type="text"
+          aria-label="Filter modules"
           placeholder={`Filter ${plural(graph.modules.length, 'module')}…`}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -272,7 +273,10 @@ function ExplorerSection(): JSX.Element {
           onSelect={(path) => {
             selectFile(path)
             const owner = ownerOf.get(path)
-            if (owner) select(owner.id)
+            if (owner) {
+              select(owner.id)
+              selectFile(path)
+            }
           }}
         />
       ))}
@@ -297,7 +301,10 @@ export function LeftSidebar(): JSX.Element {
             Open…
           </button>
         </div>
-        <ProjectInfoSection />
+        <details className="project-info">
+          <summary>Project information</summary>
+          <ProjectInfoSection />
+        </details>
       </div>
 
       <div className="pane-section pane-section--grow">

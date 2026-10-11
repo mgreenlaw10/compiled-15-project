@@ -17,6 +17,7 @@ import { Handle, Position, type NodeProps } from '@xyflow/react'
 
 import type { ModuleNode } from '../../shared/types/architecture'
 import { Badge } from './common'
+import { moduleColor } from './graph-colors'
 
 export const FILE_DRAG_MIME = 'application/x-cartograph-file'
 
@@ -83,6 +84,8 @@ export function ModuleNodeView({
       <Handle type="target" position={Position.Left} />
 
       <div className="node-head">
+        <span className="node-color" style={{ background: moduleColor(module.id) }}
+          title="Outgoing arrows use this module's color" aria-hidden="true" />
         <span className="node-name" title={module.name}>
           {module.name}
         </span>

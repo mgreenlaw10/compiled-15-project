@@ -30,6 +30,8 @@ import {
 
 export function AddModuleDialog(): JSX.Element {
   const graph = useStore((s) => s.desired)
+  const position = useStore((s) => s.addModulePosition)
+  const setPosition = useStore((s) => s.setPosition)
   const dispatchOperation = useStore((s) => s.dispatchOperation)
   const openDialog = useStore((s) => s.openDialog)
 
@@ -84,7 +86,10 @@ export function AddModuleDialog(): JSX.Element {
           .filter((part) => part !== '')
       }
     })
-    if (ok) openDialog(null)
+    if (ok) {
+      if (position) setPosition(id, position)
+      openDialog(null)
+    }
   }
 
   return (
