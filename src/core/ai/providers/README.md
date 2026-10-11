@@ -50,11 +50,18 @@ assume:
 
 ## Things worth knowing
 
-- **Reasoning is never replayed.** Anthropic's thinking blocks are signed and
-  cannot be reconstructed from the neutral shape; replaying another provider's
-  reasoning as assistant text confuses more than it helps. Both adapters drop
-  it on the way back out. The conversation stays valid because text and
-  tool_use carry the turn's actual content.
+- **Reasoning is never replayed as assistant text.** Anthropic's thinking
+  blocks are signed and cannot be reconstructed from the neutral shape, and
+  reading another provider's reasoning back as a reply confuses more than it
+  helps. The conversation stays valid without it, because text and tool_use
+  carry the turn's actual content.
+- **Some hosts still need it back, in their own field.** A thinking mode that
+  keeps no state between turns rejects the next request unless the reasoning it
+  produced returns as `reasoning_content` on the assistant message — a 400 that
+  ends an agent run after its first reply, which looks like "no files were
+  changed". `replayReasoning` on the OpenAI-compatible transport sends it back
+  in that field (never as content), and Luminal turns it on. It is opt-in
+  because a gateway that does not know the field may reject it instead.
 - **Tool inputs are always re-validated** in `runTool`, whatever the provider
   did. Anthropic stops validating when inputs stream eagerly, and an
   OpenAI-compatible gateway never validated them at all.

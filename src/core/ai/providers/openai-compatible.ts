@@ -32,6 +32,14 @@ export interface OpenAiCompatibleOptions {
   sendApiKeyHeader?: boolean
   /** How well the endpoint enforces structured output. */
   jsonMode?: ChatCapabilities['jsonMode']
+  /**
+   * Echo the reasoning the endpoint produced back on the assistant turn, as
+   * `reasoning_content`. Hosts whose thinking mode is stateless over the chat
+   * protocol require this: without it a second turn is rejected, which ends a
+   * tool-using agent run after its first reply. Off by default, because a
+   * gateway that does not know the field may reject the request instead.
+   */
+  replayReasoning?: boolean
   /** Extra headers, e.g. a gateway's routing hints. */
   headers?: Record<string, string>
   /** Request timeout. Agent turns can be long; tool round-trips add up. */
@@ -97,7 +105,11 @@ function toWireTools(tools: readonly ChatTool[]): unknown[] {
 }
 
 /** Our message list, flattened into the role sequence the API expects. */
-function toWireMessages(system: string, messages: ChatMessage[]): unknown[] {
+function toWireMessages(
+  system: string,
+  messages: ChatMessage[],
+  replayReasoning: boolean
+): unknown[] {
   const wire: unknown[] = [{ role: 'system', content: system }]
 
   for (const message of messages) {
@@ -136,11 +148,21 @@ function toWireMessages(system: string, messages: ChatMessage[]): unknown[] {
         }
       })
 
-    // Thinking blocks are deliberately dropped: replaying another provider's
-    // reasoning back as assistant text confuses more than it helps.
+    // Thinking is never replayed as assistant *text* -- reasoning read back as
+    // a reply confuses more than it helps. It goes back in the field it came
+    // from, and only for hosts that ask for it, because their thinking mode
+    // keeps no state of its own between turns.
+    const reasoning = replayReasoning
+      ? message.content
+          .filter((block) => block.type === 'thinking')
+          .map((block) => (block as { thinking: string }).thinking)
+          .join('')
+      : ''
+
     wire.push({
       role: 'assistant',
       content: text === '' ? null : text,
+      ...(reasoning === '' ? {} : { reasoning_content: reasoning }),
       ...(toolCalls.length > 0 ? { tool_calls: toolCalls } : {})
     })
   }
@@ -205,7 +227,11 @@ export function createOpenAiCompatibleModel(
       const body: Record<string, unknown> = {
         model: options.model,
         max_tokens: request.maxTokens,
-        messages: toWireMessages(request.system, request.messages)
+        messages: toWireMessages(
+          request.system,
+          request.messages,
+          options.replayReasoning ?? false
+        )
       }
 
       if (request.tools && request.tools.length > 0) {

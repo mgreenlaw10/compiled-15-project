@@ -75,7 +75,9 @@ export function createAiTransformer(deps: AiTransformerDeps): AiTransformer {
           JSON.stringify(op, null, 2),
           'Observed symbols and contracts:', JSON.stringify(ctx.graph.program, null, 2),
           'Desired module components and file ownership:', JSON.stringify(ctx.nextGraph.modules.filter((m) => moduleIds.has(m.id)), null, 2),
-          'Desired symbol definitions:', JSON.stringify(ctx.nextGraph.program.symbols.filter((s) => 'symbolId' in op && s.id === op.symbolId), null, 2),
+          'Desired symbol definitions:', JSON.stringify(ctx.nextGraph.program.symbols.filter((s) => op.type === 'add_symbol' ? s.id === op.symbol.id : 'symbolId' in op && s.id === op.symbolId), null, 2),
+          'For new symbols, derive the implementation from the description. Signatures are optional suggestions, not prerequisites. Infer omitted parameters, field types and return types from the requested behavior and existing source conventions.',
+          'Use explicitly supplied discrete properties (parameters, return type, fields, kind and visibility) when present. Preserve whether the new element belongs to the public interface or private implementation. Do not generate placeholder bodies in place of the described behavior.',
           'A contract edit requests a behavioral implementation change, not just a comment change. Add or update focused tests where feasible.',
           'Never claim behavioral compatibility because code compiles. Report unverified guarantees and unresolved consumers.',
           'Do not modify unrelated modules. Use read_file before write_file. Return partial or unsupported if requirements cannot be established.'

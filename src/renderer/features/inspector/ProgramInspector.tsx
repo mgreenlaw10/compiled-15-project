@@ -4,85 +4,122 @@ import type { BehavioralContract, ContractCategory, ProgramField, ProgramSymbol 
 import { isCallable, isDataType, symbolsOf } from '../../../shared/graph/program'
 import { analyzeImpact } from '../../../shared/graph/impact'
 import { operationId } from '../../../shared/util/id'
+import { createDraftSymbol, type DraftCategory } from '../../../shared/graph/draft-symbol'
 import { useStore, usePendingOperations } from '../../state/store'
 import { SectionTitle } from '../../ui'
 
-export function EditText({ label, value, commit, multiline = false }: { label: string; value: string; commit: (value: string) => void; multiline?: boolean }): JSX.Element {
+export function EditText({ label, value, commit, multiline = false, autoFocus = false }: { label: string; value: string; commit: (value: string) => void; multiline?: boolean; autoFocus?: boolean }): JSX.Element {
   const [draft, setDraft] = useState(value)
   return <label className="field"><span className="label">{label}</span>{multiline ?
-    <textarea rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={() => draft !== value && commit(draft)} /> :
+    <textarea rows={3} autoFocus={autoFocus} value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={() => draft !== value && commit(draft)} /> :
     <input value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={() => draft !== value && commit(draft)} />}</label>
 }
 
-export function FieldEditor({ field: f, symbol, module }: { field: ProgramField; symbol: ProgramSymbol; module: ModuleNode }): JSX.Element {
+/**
+ * A field reads as its name. Its type, visibility and source location are one
+ * quiet line underneath, and the editors sit behind a disclosure so a selected
+ * data structure does not turn the sidebar into a wall of form controls.
+ */
+export function FieldEditor({ field: f, symbol, module, focused = false }: { field: ProgramField; symbol: ProgramSymbol; module: ModuleNode; focused?: boolean }): JSX.Element {
   const dispatch = useStore((s) => s.dispatchOperation)
   const update = (changes: Partial<ProgramField>): void => {
     dispatch({ type: 'update_symbol', moduleId: module.id, symbolId: symbol.id, expectedVersion: symbol.version,
       changes: { fields: symbol.fields.map((item) => item.id === f.id ? { ...item, ...changes, version: item.version + 1 } : item) } })
   }
   return <div className="program-field">
-    <EditText key={`name:${f.name}`} label="Field name" value={f.name} commit={(name) => update({ name })} />
-    <EditText key={`type:${f.type}`} label="Field type" value={f.type} commit={(type) => update({ type })} />
-    <label className="field"><span className="label">Field visibility</span><select value={f.accessibility} onChange={(e) => update({ accessibility: e.target.value as ProgramSymbol['accessibility'] })}>
-      {['public', 'protected', 'private', 'package', 'internal', 'unknown'].map((v) => <option key={v}>{v}</option>)}
-    </select></label>
-    <span className="hint">{f.accessibility} · {f.source.file}:{f.source.line}</span>
-    <button className="btn btn--ghost btn--sm" onClick={() => {
-      if (dispatch({ type: 'update_symbol', moduleId: module.id, symbolId: symbol.id, expectedVersion: symbol.version,
-        changes: { fields: symbol.fields.filter((item) => item.id !== f.id) } }) && useStore.getState().selectedSymbolId === f.id) useStore.getState().selectSymbol(symbol.id)
-    }}>Remove field</button>
+    <p className="program-member"><strong>{f.name}</strong><span className="hint mono">{f.type}</span></p>
+    <p className="program-detail"><span>{f.accessibility}</span><span className="mono">{f.source.file}:{f.source.line}</span></p>
+    <details className="program-card" open={focused || undefined}><summary>Edit field</summary>
+      <EditText key={`name:${f.name}`} label="Field name" value={f.name} commit={(name) => update({ name })} />
+      <EditText key={`type:${f.type}`} label="Field type" value={f.type} commit={(type) => update({ type })} />
+      <label className="field"><span className="label">Field visibility</span><select value={f.accessibility} onChange={(e) => update({ accessibility: e.target.value as ProgramSymbol['accessibility'] })}>
+        {['public', 'protected', 'private', 'package', 'internal', 'unknown'].map((v) => <option key={v}>{v}</option>)}
+      </select></label>
+      <button className="btn btn--ghost btn--sm" onClick={() => {
+        if (dispatch({ type: 'update_symbol', moduleId: module.id, symbolId: symbol.id, expectedVersion: symbol.version,
+          changes: { fields: symbol.fields.filter((item) => item.id !== f.id) } }) && useStore.getState().selectedSymbolId === f.id) useStore.getState().selectSymbol(symbol.id)
+      }}>Remove field</button>
+    </details>
   </div>
 }
 
+/**
+ * A function or data structure reads as its own name plus its signature. The
+ * qualified name, the visibility and the source location are one summary line;
+ * the editors, the dependency lists and the destructive controls each sit
+ * behind their own disclosure, so selecting a node answers "what is this"
+ * before it offers "how do I change it".
+ */
 export function SymbolCard({ symbol, module, focused = false }: { symbol: ProgramSymbol; module: ModuleNode; focused?: boolean }): JSX.Element {
   const graph = useStore((s) => s.desired)!
+  const draft = !symbol.sourceText && symbol.descriptionOrigin === 'user' && !symbol.definition
   const dispatch = useStore((s) => s.dispatchOperation)
   const openFile = useStore((s) => s.openFile)
   const callers = graph.program.relationships.filter((r) => r.toSymbolId === symbol.id && r.kind === 'call')
   const consumers = graph.program.relationships.filter((r) => r.toSymbolId === symbol.id && r.kind !== 'implementation_of')
+  const outgoing = graph.program.relationships.filter((r) => r.fromSymbolId === symbol.id)
   const contracts = graph.program.contracts.filter((c) => c.symbolId === symbol.id)
+  const crossModule = consumers.filter((r) => !module.files.includes(r.source.file)).length
   const update = (changes: Extract<Parameters<typeof dispatch>[0], { type: 'update_symbol' }>['changes']): void => {
     dispatch({ type: 'update_symbol', moduleId: module.id, symbolId: symbol.id, changes, expectedVersion: symbol.version })
   }
   return <details className="program-card" open={useStore((s) => s.selectedSymbolId) === symbol.id || focused}>
-    <summary><strong>{symbol.qualifiedName}</strong><span className="hint">{symbol.accessibility} · {symbol.kind}</span></summary>
-    <p className="mono program-signature">{symbol.signature}</p>
-    <button className="btn btn--ghost btn--sm" onClick={() => openFile(module.id, symbol.source.file)}>{symbol.source.file}:{symbol.source.line}</button>
-    <p className="hint">Publicly accessible: {symbol.publiclyAccessible ? 'yes' : 'no'} · Known callers: {callers.length} · Cross-module uses: {
-      consumers.filter((r) => !module.files.includes(r.source.file)).length}</p>
-    <EditText key={`name:${symbol.id}:${symbol.name}`} label="Symbol name" value={symbol.name} commit={(name) => update({ name })} />
-    <EditText key={`signature:${symbol.id}:${symbol.signature}`} label="Source signature" value={symbol.signature} commit={(signature) => update({ signature })} />
-    {isCallable(symbol) && <>
-      {symbol.parameters.map((parameter, index) => <div className="program-parameter" key={`${symbol.id}:${index}:${parameter.name}:${parameter.type}`}>
-        <EditText label={`Parameter ${index + 1} name`} value={parameter.name} commit={(name) => update({ parameters: symbol.parameters.map((p, i) => i === index ? { ...p, name } : p) })} />
-        <EditText label={`Parameter ${index + 1} type`} value={parameter.type} commit={(type) => update({ parameters: symbol.parameters.map((p, i) => i === index ? { ...p, type } : p) })} />
-        <button className="btn btn--ghost btn--sm" onClick={() => update({ parameters: symbol.parameters.filter((_p, i) => i !== index) })}>Remove parameter</button>
-      </div>)}
-      <button className="btn btn--sm" onClick={() => update({ parameters: [...symbol.parameters, { name: 'argument', type: symbol.language === 'python' ? 'int' : 'unknown', optional: false, variadic: false }] })}>Add parameter</button>
-      <EditText key={`${symbol.id}:return:${symbol.returnType}`} label="Return type" value={symbol.returnType} commit={(returnType) => update({ returnType })} />
-      {symbol.exceptions.length > 0 && <p className="hint">Declared exceptions: {symbol.exceptions.join(', ')}</p>}
-    </>}
-    <EditText key={`${symbol.id}:description:${symbol.description}`} label="Function or type description" value={symbol.description} multiline commit={(description) => update({ description })} />
-    <label className="field"><span className="label">Accessibility</span><select value={symbol.accessibility} onChange={(e) => update({ accessibility: e.target.value as ProgramSymbol['accessibility'] })}>
-      {['public', 'protected', 'private', 'package', 'internal', 'unknown'].map((v) => <option key={v}>{v}</option>)}
-    </select></label>
-    {isDataType(symbol) && <>
-      <p className="hint">Bases: {symbol.bases.join(', ') || 'none declared'}. {symbol.publiclyAccessible ? 'Public data structure' : 'Implementation data structure'}.</p>
-      {symbol.fields.map((f) => <FieldEditor key={f.id} field={f} symbol={symbol} module={module} />)}
-      <button className="btn btn--sm" onClick={() => update({ fields: [...symbol.fields, { id: operationId('field'), name: 'field', type: 'unknown', accessibility: 'public', source: symbol.source, version: 1 }] })}>Add field</button>
-    </>}
-    <div className="hint">{callers.map((r) => <div key={r.id}>Caller: {graph.program.symbols.find((s) => s.id === r.fromSymbolId)?.qualifiedName} · {r.source.file}:{r.source.line} ({r.resolution})</div>)}</div>
-    {graph.program.relationships.filter((r) => r.fromSymbolId === symbol.id).map((r) => <div key={r.id} className="hint">
-      <button className="btn btn--ghost btn--sm" onClick={() => useStore.getState().selectRelationship(r.id)}>{r.kind}: {r.targetName} ({r.resolution})</button>
-      <span>{r.source.file}:{r.source.line}</span>
-    </div>)}
-    {isDataType(symbol) && consumers.map((r) => <p className="hint" key={r.id}>{r.kind}: used by {graph.program.symbols.find((s) => s.id === r.fromSymbolId)?.qualifiedName} · {r.source.file}:{r.source.line} ({r.resolution})</p>)}
+    <summary><strong>{symbol.name}</strong><span className="hint">{symbol.kind.replaceAll('_', ' ')}</span></summary>
+    {symbol.signature && <p className="mono program-signature">{symbol.signature}</p>}
+    <p className="program-detail">
+      <span>{symbol.accessibility}</span>
+      <span>{symbol.publiclyAccessible ? 'public API' : 'internal'}</span>
+      <button className="btn btn--ghost btn--sm" onClick={() => openFile(module.id, symbol.source.file)}>{symbol.source.file}{draft ? ' (planned)' : `:${symbol.source.line}`}</button>
+    </p>
+    <details className="program-card" open={draft || undefined}><summary>Properties</summary>
+      <p className="hint mono">{symbol.qualifiedName}</p>
+      {draft && <>
+        <EditText key={`${symbol.id}:description:${symbol.description}`} label="Description" value={symbol.description} multiline autoFocus={!symbol.description} commit={(description) => update({ description })} />
+        <p className="hint">Describe what this {isDataType(symbol) ? 'data structure' : 'function'} should do. Generation derives its implementation from this description; the fields below are optional guidance.</p>
+      </>}
+      <EditText key={`name:${symbol.id}:${symbol.name}`} label="Symbol name" value={symbol.name} commit={(name) => update({ name })} />
+      {isDataType(symbol) && <label className="field"><span className="label">Data structure kind</span><select value={symbol.kind} onChange={(e) => update({ kind: e.target.value as ProgramSymbol['kind'] })}>
+        {['class', 'struct', 'union', 'record', 'interface', 'enum', 'type'].map((kind) => <option key={kind}>{kind}</option>)}
+      </select></label>}
+      <EditText key={`signature:${symbol.id}:${symbol.signature}`} label={draft ? 'Suggested signature (optional)' : 'Source signature'} value={symbol.signature} commit={(signature) => update({ signature })} />
+      {isCallable(symbol) && <>
+        {symbol.parameters.map((parameter, index) => <div className="program-parameter" key={`${symbol.id}:${index}:${parameter.name}:${parameter.type}`}>
+          <EditText label={`Parameter ${index + 1} name`} value={parameter.name} commit={(name) => update({ parameters: symbol.parameters.map((p, i) => i === index ? { ...p, name } : p) })} />
+          <EditText label={`Parameter ${index + 1} type`} value={parameter.type} commit={(type) => update({ parameters: symbol.parameters.map((p, i) => i === index ? { ...p, type } : p) })} />
+          <button className="btn btn--ghost btn--sm" onClick={() => update({ parameters: symbol.parameters.filter((_p, i) => i !== index) })}>Remove parameter</button>
+        </div>)}
+        <button className="btn btn--sm" onClick={() => update({ parameters: [...symbol.parameters, { name: 'argument', type: draft ? '' : symbol.language === 'python' ? 'int' : 'unknown', optional: false, variadic: false }] })}>Add parameter</button>
+        <EditText key={`${symbol.id}:return:${symbol.returnType}`} label="Return type" value={symbol.returnType} commit={(returnType) => update({ returnType })} />
+        {symbol.exceptions.length > 0 && <p className="hint">Declared exceptions: {symbol.exceptions.join(', ')}</p>}
+      </>}
+      {!draft && <EditText key={`${symbol.id}:description:${symbol.description}`} label="Function or type description" value={symbol.description} multiline commit={(description) => update({ description })} />}
+      <label className="field"><span className="label">Accessibility</span><select value={symbol.accessibility} onChange={(e) => update({ accessibility: e.target.value as ProgramSymbol['accessibility'] })}>
+        {['public', 'protected', 'private', 'package', 'internal', 'unknown'].map((v) => <option key={v}>{v}</option>)}
+      </select></label>
+      {isDataType(symbol) && <p className="hint">Bases: {symbol.bases.join(', ') || 'none declared'}.</p>}
+    </details>
+    {isDataType(symbol) && <details className="program-card" open={draft || undefined}><summary>Fields ({symbol.fields.length})</summary>
+      {symbol.fields.map((f) => <FieldEditor key={f.id} field={f} symbol={symbol} module={module} focused={draft} />)}
+      <button className="btn btn--sm" onClick={() => update({ fields: [...symbol.fields, { id: operationId('field'), name: 'field', type: draft ? '' : 'unknown', accessibility: 'public', source: symbol.source, version: 1 }] })}>Add field</button>
+    </details>}
+    {(callers.length > 0 || outgoing.length > 0 || (isDataType(symbol) && consumers.length > 0)) &&
+      <details className="program-card"><summary>Dependencies ({callers.length + outgoing.length})</summary>
+        <p className="hint">{callers.length} known {callers.length === 1 ? 'caller' : 'callers'} · {crossModule} cross-module {crossModule === 1 ? 'use' : 'uses'}</p>
+        {callers.map((r) => <p className="hint" key={r.id}>Caller: {graph.program.symbols.find((s) => s.id === r.fromSymbolId)?.qualifiedName} · {r.source.file}:{r.source.line} ({r.resolution})</p>)}
+        {outgoing.map((r) => <div key={r.id} className="hint">
+          <button className="btn btn--ghost btn--sm" onClick={() => useStore.getState().selectRelationship(r.id)}>{r.kind}: {r.targetName} ({r.resolution})</button>
+          <span>{r.source.file}:{r.source.line}</span>
+        </div>)}
+        {isDataType(symbol) && consumers.map((r) => <p className="hint" key={r.id}>{r.kind}: used by {graph.program.symbols.find((s) => s.id === r.fromSymbolId)?.qualifiedName} · {r.source.file}:{r.source.line} ({r.resolution})</p>)}
+      </details>}
     {!focused && contracts.map((c) => <p className="hint" key={c.id}>{c.category}: {c.description} ({c.provenance}, {c.verification})</p>)}
-    <button className="btn btn--danger btn--sm" onClick={() => dispatch({ type: 'remove_symbol', moduleId: module.id, symbolId: symbol.id, expectedVersion: symbol.version })}>Remove {symbol.kind}</button>
-    <label className="field"><span className="label">Move source component</span><select value="" onChange={(e) => {
-      if (e.target.value) dispatch({ type: 'move_symbol', symbolId: symbol.id, symbol: symbol.name, fromFile: symbol.source.file,
-        fromModuleId: module.id, toModuleId: e.target.value, leaveReExport: false })
-    }}><option value="">Choose destination module</option>{graph.modules.filter((m) => m.id !== module.id).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+    <details className="program-card"><summary>Move or remove</summary>
+      <label className="field"><span className="label">Move source component</span><select value="" onChange={(e) => {
+        if (e.target.value) dispatch({ type: 'move_symbol', symbolId: symbol.id, symbol: symbol.name, fromFile: symbol.source.file,
+          fromModuleId: module.id, toModuleId: e.target.value, leaveReExport: false })
+      }}><option value="">Choose destination module</option>{graph.modules.filter((m) => m.id !== module.id).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+      <button className="btn btn--danger btn--sm" onClick={() => dispatch({ type: 'remove_symbol', moduleId: module.id, symbolId: symbol.id, expectedVersion: symbol.version })}>Remove {symbol.kind}</button>
+    </details>
   </details>
 }
 
@@ -129,10 +166,10 @@ export function ProgramInspector({ module }: { module: ModuleNode }): JSX.Elemen
   const [fieldId, setFieldId] = useState('')
   const [description, setDescription] = useState('')
   const [expression, setExpression] = useState('')
-  const [newName, setNewName] = useState('')
-  const [newKind, setNewKind] = useState<ProgramSymbol['kind']>('function')
-  const [newSignature, setNewSignature] = useState('')
-  const [newFile, setNewFile] = useState(module.files[0] ?? '')
+  const add = (category: DraftCategory): void => {
+    const symbol = createDraftSymbol(graph, module, category, operationId('symbol'))
+    if (dispatch({ type: 'add_symbol', moduleId: module.id, symbol })) useStore.getState().selectSymbol(symbol.id)
+  }
   const contracts = graph.program.contracts.filter((c) => module.components.contracts.contractIds.includes(c.id))
   const impacts = original ? pending.flatMap((op) => analyzeImpact(original, op)) : []
   const selectedEdge = graph.edges.find((e) => e.id === selectedRelationship)
@@ -152,30 +189,18 @@ export function ProgramInspector({ module }: { module: ModuleNode }): JSX.Elemen
     <SectionTitle>Interface Functions</SectionTitle>
     {symbols.filter((s) => isCallable(s) && s.publiclyAccessible).map((s) => <SymbolCard key={s.id} symbol={s} module={module} />)}
     {!module.components.interface.functionIds.length && <p className="hint">No publicly accessible functions were found.</p>}
+    <button className="btn btn--sm" aria-label="Add interface function" onClick={() => add('interface')}>Add</button>
     <SectionTitle>Data Structures</SectionTitle>
     {symbols.filter(isDataType).map((s) => <SymbolCard key={s.id} symbol={s} module={module} />)}
     {!module.components.dataStructures.symbolIds.length && <p className="hint">No data structures were found.</p>}
-    <details className="program-card"><summary>Add function or data structure</summary>
-      <label className="field"><span className="label">Kind</span><select value={newKind} onChange={(e) => setNewKind(e.target.value as ProgramSymbol['kind'])}>{['function', 'class', 'struct', 'interface', 'record', 'enum', 'type'].map((k) => <option key={k}>{k}</option>)}</select></label>
-      <label className="field"><span className="label">New symbol name</span><input value={newName} onChange={(e) => setNewName(e.target.value)} /></label>
-      <label className="field"><span className="label">Desired signature</span><input value={newSignature} onChange={(e) => setNewSignature(e.target.value)} /></label>
-      <label className="field"><span className="label">Source file</span><select value={newFile} onChange={(e) => setNewFile(e.target.value)}>{module.files.map((f) => <option key={f}>{f}</option>)}</select></label>
-      <button className="btn btn--sm" disabled={!newName.trim() || !newSignature.trim() || !newFile} onClick={() => {
-        const source = { file: newFile, start: 0, end: 0, line: 1, endLine: 1, column: 1 }
-        const neighbor = symbols.find((s) => s.source.file === newFile)
-        dispatch({ type: 'add_symbol', moduleId: module.id, symbol: { id: operationId('symbol'), name: newName.trim(), qualifiedName: newName.trim(), scope: '',
-          kind: newKind, language: neighbor?.language ?? 'unknown', accessibility: 'public', linkage: neighbor?.linkage ?? 'none', publiclyAccessible: true,
-          signature: newSignature, parameters: [], returnType: 'unknown', exceptions: [], fields: [], bases: [], description: '', descriptionOrigin: 'user',
-          source, nameSource: source, signatureSource: source, sourceText: '', definition: false, version: 1 } })
-        setNewName(''); setNewSignature('')
-      }}>Add pending source component</button>
-    </details>
+    <button className="btn btn--sm" aria-label="Add data structure" onClick={() => add('data')}>Add</button>
     <SectionTitle>Private Implementation</SectionTitle>
     <p className="hint">Observed explanation ({module.components.implementation.descriptionOrigin}):</p>
     <p>{module.components.implementation.observedDescription}</p>
     <EditText key={`${module.id}:${module.components.implementation.desiredDescription}`} label="Desired implementation behavior" multiline
       value={module.components.implementation.desiredDescription ?? ''} commit={(text) => dispatch({ type: 'update_implementation', moduleId: module.id, description: text })} />
     {symbols.filter((s) => isCallable(s) && !s.publiclyAccessible).map((s) => <SymbolCard key={s.id} symbol={s} module={module} />)}
+    <button className="btn btn--sm" aria-label="Add private implementation" onClick={() => add('implementation')}>Add</button>
     <SectionTitle>Module Contracts</SectionTitle>
     {['Module-wide guarantees', 'Interface function contracts', 'Data structure invariants', 'Shared state and resource requirements'].map((group, index) => {
       const grouped = contracts.filter((c) => {

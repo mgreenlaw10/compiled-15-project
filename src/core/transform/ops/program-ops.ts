@@ -112,7 +112,7 @@ export function executeProgramOperation(op: GraphOperation, ctx: OpContext): OpR
     if (!symbol || !desired) return failed('Symbol not found.')
     if (!declarationIsCurrent(symbol, ctx)) return failed('The declaration changed since analysis; reanalyze before refactoring.')
     if (!isCallable(symbol)) return fallback()
-    if (op.changes.fields || op.changes.accessibility || op.changes.description) return fallback()
+    if (op.changes.kind || op.changes.fields || op.changes.accessibility || op.changes.description) return fallback()
     if (op.changes.name && !op.changes.parameters && !op.changes.returnType && !op.changes.signature && ['typescript', 'javascript'].includes(symbol.language)) {
       return renameTsSymbol(symbol, desired.name, op, ctx)
     }

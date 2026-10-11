@@ -25,7 +25,8 @@ export function NodeInspector({ module }: { module: ModuleNode }): JSX.Element {
   const edits = pending.filter((op) => symbol && 'symbolId' in op && op.symbolId === symbol.id ||
     contract && 'contractId' in op && op.contractId === contract.id || 'contractId' in op && contracts.some((c) => c.id === op.contractId))
   const impacts = original ? edits.flatMap((op) => analyzeImpact(original, op)) : []
-  const title = field ? 'Field' : symbol ? symbol.kind.replaceAll('_', ' ') : contract ? 'Contract' : unresolved.length ? 'Unresolved reference' : file ? 'File' : 'Inspector'
+  const draft = symbol && !symbol.sourceText && symbol.descriptionOrigin === 'user' && !symbol.definition
+  const title = field ? 'Field' : symbol ? draft ? isDataType(symbol) ? 'Data Structure' : symbol.publiclyAccessible ? 'Interface Function' : 'Private Implementation' : symbol.kind.replaceAll('_', ' ') : contract ? 'Contract' : unresolved.length ? 'Unresolved reference' : file ? 'File' : 'Inspector'
   return <aside className="pane pane--right">
     <div className="pane-header"><span style={{ textTransform: 'capitalize' }}>{title}</span></div>
     <div className="pane-body">
@@ -34,15 +35,18 @@ export function NodeInspector({ module }: { module: ModuleNode }): JSX.Element {
       {symbol && !field && <>
         <SymbolCard key={symbol.id} symbol={symbol} module={owner} focused />
         {isDataType(symbol) && <><SectionTitle>Members</SectionTitle>{graph.program.symbols.filter((s) => s.scope === symbol.qualifiedName && s.source.file === symbol.source.file).map((s) =>
-          <button key={s.id} className="btn btn--ghost btn--sm" onClick={() => { openFile(owner.id, s.source.file); selectSymbol(s.id) }}>{s.kind} {s.name}</button>)}</>}
-        <details className="program-card"><summary>Source code</summary><pre className="program-source">{symbol.sourceText}</pre></details>
+          <button key={s.id} className="btn btn--ghost btn--sm" title={s.signature} onClick={() => { openFile(owner.id, s.source.file); selectSymbol(s.id) }}>{s.name}</button>)}</>}
+        {symbol.sourceText && <details className="program-card"><summary>Source code</summary><pre className="program-source">{symbol.sourceText}</pre></details>}
       </>}
       {symbol && field && <>
-        <p className="mono">{symbol.qualifiedName}.{field.name}</p>
-        <FieldEditor key={field.id} field={field} symbol={symbol} module={owner} />
-        <button className="btn btn--ghost btn--sm" onClick={() => selectSymbol(symbol.id)}>Declaring type: {symbol.qualifiedName}</button>
-        <SectionTitle>Field dependencies</SectionTitle>
-        {graph.program.relationships.filter((r) => r.toFieldId === field.id).map((r) => <p key={r.id} className="hint">{r.kind}: {graph.program.symbols.find((s) => s.id === r.fromSymbolId)?.qualifiedName} · {r.source.file}:{r.source.line} ({r.resolution})</p>)}
+        <FieldEditor key={field.id} field={field} symbol={symbol} module={owner} focused />
+        <button className="btn btn--ghost btn--sm" onClick={() => selectSymbol(symbol.id)}>Declaring type: {symbol.name}</button>
+        {(() => {
+          const uses = graph.program.relationships.filter((r) => r.toFieldId === field.id)
+          return uses.length ? <details className="program-card"><summary>Field dependencies ({uses.length})</summary>
+            {uses.map((r) => <p key={r.id} className="hint">{r.kind}: {graph.program.symbols.find((s) => s.id === r.fromSymbolId)?.qualifiedName} · {r.source.file}:{r.source.line} ({r.resolution})</p>)}
+          </details> : null
+        })()}
       </>}
       {contract && <ContractCard key={contract.id} contract={contract} module={owner} focused />}
       {symbol && <><SectionTitle>Associated contracts</SectionTitle>{contracts.length ? contracts.map((c) => <ContractCard key={c.id} contract={c} module={owner} />) : <p className="hint">No contracts recorded for this {field ? 'field' : 'symbol'}.</p>}</>}
@@ -50,9 +54,10 @@ export function NodeInspector({ module }: { module: ModuleNode }): JSX.Element {
         <p className="mono">{file}</p>
         <button className="btn" onClick={() => openFile(owner.id, file)}>Open file structure</button>
         <SectionTitle>File symbols</SectionTitle>
-        {graph.program.symbols.filter((s) => s.source.file === file).map((s) => <div key={s.id}>
-          <button className="btn btn--ghost btn--sm" onClick={() => { openFile(owner.id, file); selectSymbol(s.id) }}>{s.kind} {s.qualifiedName}</button>
-          <p className="mono hint">{s.signature} · line {s.source.line}</p>
+        {graph.program.symbols.filter((s) => s.source.file === file).map((s) => <div key={s.id} className="program-member">
+          <button className="btn btn--ghost btn--sm" title={`${s.signature} · line ${s.source.line}`}
+            onClick={() => { openFile(owner.id, file); selectSymbol(s.id) }}>{s.name}</button>
+          <span className="hint">{s.kind.replaceAll('_', ' ')}</span>
         </div>)}
         <SectionTitle>File dependencies</SectionTitle>
         {graph.program.fileRelationships.filter((r) => r.fromFile === file || r.toFile === file).map((r, i) => <p className="hint mono" key={i}>{r.fromFile}:{r.line} → {r.toFile} ({r.kind})</p>)}

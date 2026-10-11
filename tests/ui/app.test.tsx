@@ -9,7 +9,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { act } from 'react'
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
@@ -72,6 +72,36 @@ async function openSample(): Promise<void> {
 }
 
 describe('the application shell', () => {
+  it('resizes the inspector, retains width across selections, and records no architectural edit', async () => {
+    const rendered = render(<App />)
+    await openSample()
+    const graph = useStore.getState().desired
+    const handle = screen.getByRole('separator', { name: 'Resize inspector' })
+    const overlay = rendered.container.querySelector('.inspector-overlay') as HTMLElement
+    const workspace = rendered.container.querySelector('.workspace') as HTMLElement
+    const previousStyle = workspace.getAttribute('style')
+    fireEvent(handle, new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 700 }))
+    fireEvent(handle, new MouseEvent('pointermove', { bubbles: true, clientX: 500 }))
+    fireEvent(handle, new MouseEvent('pointerup', { bubbles: true, clientX: 500 }))
+    expect(overlay.style.getPropertyValue('--inspector-width')).toBe('540px')
+    const symbol = graph!.program.symbols.find((s) => s.kind === 'function')!
+    act(() => useStore.getState().selectSymbol(symbol.id))
+    expect(screen.getByLabelText('Symbol name')).toBeTruthy()
+    expect(overlay.style.getPropertyValue('--inspector-width')).toBe('540px')
+    expect(workspace.getAttribute('style')).toBe(previousStyle)
+    expect(useStore.getState().desired).toBe(graph)
+    expect(useStore.getState().operations).toEqual([])
+    expect(useStore.getState().dirty).toBe(false)
+    fireEvent.keyDown(handle, { key: 'End' })
+    expect(Number(handle.getAttribute('aria-valuenow'))).toBe(Number(handle.getAttribute('aria-valuemax')))
+    fireEvent.keyDown(handle, { key: 'ArrowLeft' })
+    expect(Number(handle.getAttribute('aria-valuenow'))).toBe(Number(handle.getAttribute('aria-valuemax')))
+    fireEvent.doubleClick(handle)
+    expect(overlay.style.getPropertyValue('--inspector-width')).toBe('340px')
+    fireEvent.keyDown(handle, { key: 'ArrowRight' })
+    expect(overlay.style.getPropertyValue('--inspector-width')).toBe('340px')
+  })
+
   it('starts with no project and explains what to do', async () => {
     render(<App />)
 

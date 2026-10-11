@@ -12,7 +12,7 @@ import { useEffect } from 'react'
 import { BottomPanel } from '../features/bottom-panel'
 import { GraphCanvas } from '../features/canvas'
 import { Dialogs } from '../features/dialogs'
-import { Inspector } from '../features/inspector'
+import { Inspector, InspectorDock } from '../features/inspector'
 import { LeftSidebar } from '../features/sidebar'
 import { StatusBar, Toolbar } from '../features/toolbar'
 import { useStore } from '../state/store'
@@ -58,7 +58,7 @@ export function App(): JSX.Element {
           <GraphCanvas />
         </main>
 
-        {graph ? <Inspector /> : null}
+        {graph ? <InspectorDock><Inspector /></InspectorDock> : null}
       </div>
 
       <BottomPanel />

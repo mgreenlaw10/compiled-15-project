@@ -29,13 +29,17 @@ export async function refreshProgramAnchors(graph: ArchitectureGraph, workspace:
   const symbols = graph.program.symbols.map((symbol) => {
     const currentFile = workspace.currentPathOf(symbol.source.file) ?? symbol.source.file
     let candidates = parsed.symbols.filter((s) => s.source.file === currentFile && s.name === symbol.name && s.kind === symbol.kind && s.scope === symbol.scope)
+    if (!candidates.length && !symbol.sourceText && !symbol.definition) candidates = parsed.symbols.filter((s) =>
+      s.source.file === currentFile && s.name === symbol.name && (s.kind === symbol.kind ||
+        ['function', 'method'].includes(s.kind) && ['function', 'method'].includes(symbol.kind)))
     if (candidates.length > 1) candidates = candidates.filter((s) => s.parameters.map((p) => p.type).join(',') === symbol.parameters.map((p) => p.type).join(','))
     if (candidates.length !== 1) return symbol
     const actual = candidates[0]
     idMap.set(actual.id, symbol.id)
     actual.fields.forEach((f) => fieldMap.set(f.id, symbol.fields.find((s) => s.name === f.name)?.id ?? f.id))
     const changedSource = actual.sourceText !== symbol.sourceText
-    return { ...symbol, ...(changedSource ? { signature: actual.signature, parameters: actual.parameters, returnType: actual.returnType } : {}),
+    return { ...symbol, ...(changedSource ? { signature: actual.signature, parameters: actual.parameters, returnType: actual.returnType,
+      scope: actual.scope, qualifiedName: actual.qualifiedName, kind: actual.kind, definition: actual.definition } : {}),
       source: actual.source, nameSource: actual.nameSource, signatureSource: actual.signatureSource, bodySource: actual.bodySource,
       sourceText: actual.sourceText, fields: symbol.fields.map((f) => ({ ...f,
         source: actual.fields.find((a) => a.name === f.name)?.source ?? f.source })) }
