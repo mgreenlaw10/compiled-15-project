@@ -12,7 +12,12 @@ import path from 'node:path'
 import { analyzeProject, readProjectInfo } from '../../src/core/analyzer'
 import { createService } from '../../src/core/pipeline'
 import { createLogger } from '../../src/core/logger'
-import type { CartographApi, LogEvent, SettingsView } from '../../src/shared/types/ipc'
+import type {
+  CartographApi,
+  LogEvent,
+  SettingsView
+} from '../../src/shared/ipc'
+import { DEFAULT_PROVIDER_ID } from '../../src/shared/ai'
 
 export const SAMPLE_PROJECT = path.resolve(__dirname, '../../sample-project')
 
@@ -41,13 +46,23 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
   })
   const service = createService({ logger })
 
+  const hasKey = options.hasApiKey ?? false
   const settings: SettingsView = {
+    provider: DEFAULT_PROVIDER_ID,
     model: 'claude-opus-5-5',
     effort: 'high',
     aiAssistAnalysis: false,
     maxAiFileReads: 40,
-    hasApiKey: options.hasApiKey ?? false,
-    apiKeyHint: options.hasApiKey ? '…abcd' : ''
+    providers: {
+      [DEFAULT_PROVIDER_ID]: {
+        hasApiKey: hasKey,
+        apiKeyHint: hasKey ? '…abcd' : '',
+        fromEnvironment: false
+      }
+    },
+    hasApiKey: hasKey,
+    apiKeyHint: hasKey ? '…abcd' : '',
+    storesKeysInPlainText: false
   }
 
   const record = (method: string, ...args: unknown[]): void => {
@@ -142,9 +157,17 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
 
     async setSettings(patch) {
       record('setSettings', patch)
+      const provider = patch.provider ?? settings.provider
+      settings.provider = provider
       if (typeof patch.apiKey === 'string' && patch.apiKey !== '') {
-        settings.hasApiKey = true
-        settings.apiKeyHint = `…${patch.apiKey.slice(-4)}`
+        const status = {
+          hasApiKey: true,
+          apiKeyHint: `…${patch.apiKey.slice(-4)}`,
+          fromEnvironment: false
+        }
+        settings.providers = { ...settings.providers, [provider]: status }
+        settings.hasApiKey = status.hasApiKey
+        settings.apiKeyHint = status.apiKeyHint
       }
       if (patch.model) settings.model = patch.model
       if (patch.effort) settings.effort = patch.effort
@@ -154,8 +177,12 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       return { ...settings }
     },
 
-    async testApiKey() {
-      return { ok: settings.hasApiKey, message: 'fake' }
+    async testApiKey(provider) {
+      const id = provider ?? settings.provider
+      return {
+        ok: settings.providers[id]?.hasApiKey === true,
+        message: 'fake'
+      }
     },
 
     onLog(listener) {

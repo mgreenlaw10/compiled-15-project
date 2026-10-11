@@ -1,0 +1,159 @@
+/**
+ * The canvas: module nodes, the canvas surface, and the legend.
+ */
+
+.module-node {
+  width: 240px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 9px 11px;
+  cursor: grab;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.module-node:hover {
+  border-color: var(--accent-dim);
+}
+
+.module-node.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.module-node.is-pending {
+  border-color: var(--warn);
+  border-style: dashed;
+}
+
+.module-node.is-drop-target {
+  border-color: var(--success);
+  box-shadow: 0 0 0 2px rgba(95, 212, 154, 0.35);
+}
+
+.module-node .node-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.module-node .node-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.module-node .node-dir {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 1px;
+}
+
+.module-node .node-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.module-node .node-files {
+  margin: 7px 0 0;
+  padding: 6px 0 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  max-height: 128px;
+  overflow: auto;
+}
+
+.module-node .node-files li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.confidence {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--bg-hover);
+  overflow: hidden;
+}
+
+.confidence > div {
+  height: 100%;
+  background: var(--accent);
+}
+
+.node-expand {
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.node-expand:hover {
+  color: var(--text);
+}
+
+/* The canvas itself */
+.canvas-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.canvas-hint {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: var(--text-faint);
+  max-width: 440px;
+  pointer-events: none;
+}
+
+.canvas-legend {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 5;
+  background: rgba(26, 29, 35, 0.92);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+.canvas-legend div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.canvas-legend .swatch {
+  width: 18px;
+  height: 0;
+  border-top: 2px solid var(--text-dim);
+}
+
+.canvas-legend .swatch.dashed {
+  border-top-style: dashed;
+}

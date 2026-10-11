@@ -142,7 +142,7 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentOutcome> 
         turns -= 1
         continue
       }
-      stoppedBecause = describeApiError(error)
+      stoppedBecause = describeApiError(error, client.providerId)
       log.error('The model call failed', stoppedBecause)
       break
     }

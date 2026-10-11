@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { CartographApi } from '../shared/types/ipc'
+import type { CartographApi } from '../shared/ipc'
 
 declare global {
   interface Window {

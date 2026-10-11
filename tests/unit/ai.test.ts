@@ -412,6 +412,7 @@ describe('the AI transformer', () => {
   }
 
   const config = {
+    provider: 'anthropic',
     apiKey: 'test-key',
     model: 'claude-opus-5-5',
     effort: 'high' as const,

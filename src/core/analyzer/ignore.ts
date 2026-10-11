@@ -8,6 +8,9 @@
  */
 
 import { basename, normalizeRel, segments } from '../../shared/util/paths'
+import { SOURCE_EXTENSIONS, isSourcePath, languageOf } from '../../shared/languages'
+
+export { SOURCE_EXTENSIONS, languageOf }
 
 /** Directories never worth analyzing. Matched on any path segment. */
 export const DEFAULT_IGNORED_DIRECTORIES: readonly string[] = [
@@ -57,18 +60,6 @@ export const DEFAULT_IGNORED_FILE_PATTERNS: readonly RegExp[] = [
   /^package-lock\.json$/,
   /^yarn\.lock$/,
   /^pnpm-lock\.yaml$/
-]
-
-/** Extensions the analyzer treats as source code it can reason about. */
-export const SOURCE_EXTENSIONS: readonly string[] = [
-  '.ts',
-  '.tsx',
-  '.mts',
-  '.cts',
-  '.js',
-  '.jsx',
-  '.mjs',
-  '.cjs'
 ]
 
 /** Marker comment that identifies machine-written files. */
@@ -156,28 +147,17 @@ export function shouldIgnoreFile(relPath: string, rules: IgnoreRules): boolean {
   return false
 }
 
+/**
+ * `true` when some registered language claims this file.
+ *
+ * The list of extensions lives in `shared/languages/catalog.ts`, so adding a
+ * language does not mean editing this file.
+ */
 export function isSourceFile(relPath: string): boolean {
-  const name = basename(relPath).toLowerCase()
-  return SOURCE_EXTENSIONS.some((ext) => name.endsWith(ext))
+  return isSourcePath(relPath)
 }
 
 /** `true` when the file's own header marks it as generated. */
 export function looksGenerated(content: string): boolean {
   return GENERATED_MARKER.test(content.slice(0, 500))
-}
-
-export function languageOf(relPath: string): string {
-  const name = basename(relPath).toLowerCase()
-  if (name.endsWith('.d.ts')) return 'typescript-declaration'
-  if (name.endsWith('.tsx')) return 'typescript-react'
-  if (name.endsWith('.ts') || name.endsWith('.mts') || name.endsWith('.cts'))
-    return 'typescript'
-  if (name.endsWith('.jsx')) return 'javascript-react'
-  if (
-    name.endsWith('.js') ||
-    name.endsWith('.mjs') ||
-    name.endsWith('.cjs')
-  )
-    return 'javascript'
-  return 'other'
 }

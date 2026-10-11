@@ -1,0 +1,99 @@
+/**
+ * The bottom panel and its tabs.
+ */
+
+.bottom {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  height: 230px;
+  flex: none;
+}
+
+.bottom.is-collapsed {
+  height: 34px;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 8px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+
+.tab {
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab.is-active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.bottom-body {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  padding: 8px 0;
+}
+
+.log-line {
+  display: flex;
+  gap: 8px;
+  padding: 1px 12px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+
+.log-line:hover {
+  background: var(--bg-hover);
+}
+
+.log-line .log-time {
+  color: var(--text-faint);
+  flex: none;
+}
+
+.log-line .log-chan {
+  flex: none;
+  width: 76px;
+  color: var(--text-faint);
+}
+
+.log-line .log-msg {
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.log-line .log-detail {
+  color: var(--text-faint);
+}
+
+.log-line.level-warn .log-msg {
+  color: var(--warn);
+}
+.log-line.level-error .log-msg {
+  color: var(--danger);
+}
+.log-line.level-success .log-msg {
+  color: var(--success);
+}
+.log-line.level-debug .log-msg {
+  color: var(--text-faint);
+}

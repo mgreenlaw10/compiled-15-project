@@ -8,7 +8,7 @@
  * No global state, so two analyses can run side by side.
  */
 
-import type { LogChannel, LogEvent, LogLevel } from '../shared/types/ipc'
+import type { LogChannel, LogEvent, LogLevel } from '../shared/ipc'
 
 export interface Logger {
   log(

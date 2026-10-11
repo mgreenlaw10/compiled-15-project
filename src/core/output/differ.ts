@@ -8,7 +8,7 @@
 import { createTwoFilesPatch } from 'diff'
 
 import type { ChangeSet, FileChange } from '../../shared/types/generation'
-import type { DiffPreview } from '../../shared/types/ipc'
+import type { DiffPreview } from '../../shared/ipc'
 
 /** Rough upper bound so a huge generated file cannot lock up the UI. */
 const MAX_DIFF_CHARS = 200_000

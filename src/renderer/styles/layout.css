@@ -1,0 +1,78 @@
+/**
+ * The application grid: toolbar, workspace, panes, bottom panel, status bar.
+ */
+
+/* toolbar / workspace / bottom panel / status bar */
+.app {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  height: 100%;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 280px 1fr 340px;
+  min-height: 0;
+  border-top: 1px solid var(--border);
+}
+
+.workspace.no-right {
+  grid-template-columns: 280px 1fr;
+}
+
+.pane {
+  background: var(--bg-panel);
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pane--left {
+  border-right: 1px solid var(--border);
+}
+.pane--right {
+  border-left: 1px solid var(--border);
+}
+.pane--center {
+  background: var(--bg);
+}
+
+.pane-section {
+  border-bottom: 1px solid var(--border);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pane-section--grow {
+  flex: 1;
+  overflow: hidden;
+}
+
+.pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+
+.pane-body {
+  overflow: auto;
+  padding: 10px 12px;
+  min-height: 0;
+}
+
+.pane-body--flush {
+  padding: 4px 0;
+}

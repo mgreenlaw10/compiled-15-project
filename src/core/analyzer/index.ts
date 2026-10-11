@@ -19,12 +19,17 @@ import type { Logger } from '../logger'
 import { silentLogger } from '../logger'
 import { ANALYZER_VERSION, buildGraph } from './build-graph'
 import { clusterFiles } from './cluster'
-import { LanguageRegistry, nullAnalyzer, type FileAnalysis } from './languages'
-import { TypeScriptAnalyzer } from './languages/typescript'
+import {
+  createDefaultRegistry,
+  nullAnalyzer,
+  supportedLanguagesSentence,
+  type FileAnalysis
+} from './languages'
 import { parseTsConfigPaths } from './resolve'
 import { readProjectInfo, scanProject } from './scan'
 
 export { ANALYZER_VERSION } from './build-graph'
+export { createDefaultRegistry } from './languages'
 export { readProjectInfo } from './scan'
 
 export interface AnalyzeProjectOptions {
@@ -40,11 +45,6 @@ export interface AnalyzeProjectResult {
   layout: GraphLayout
   fileTree: FileTreeNode
   analyses: FileAnalysis[]
-}
-
-/** The registry used by the app. Add further languages here. */
-export function createDefaultRegistry(): LanguageRegistry {
-  return new LanguageRegistry().register(new TypeScriptAnalyzer())
 }
 
 function throwIfAborted(signal?: AbortSignal): void {
@@ -81,7 +81,7 @@ export async function analyzeProject(
 
   if (scan.files.length === 0) {
     log.warn(
-      'No analyzable source files found. Cartograph currently reads TypeScript and JavaScript.'
+      `No analyzable source files found. Cartograph currently reads ${supportedLanguagesSentence()}.`
     )
   }
 

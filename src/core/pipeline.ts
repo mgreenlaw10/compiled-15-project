@@ -24,14 +24,14 @@ import type {
   WriteMode
 } from '../shared/types/generation'
 import type { GraphOperation } from '../shared/types/operations'
-import type { DiffPreview } from '../shared/types/ipc'
+import type { DiffPreview } from '../shared/ipc'
 import { analyzeProject, type AnalyzeProjectResult } from './analyzer'
 import { scanProject } from './analyzer/scan'
 import { diffChangeSet } from './output/differ'
 import { applyChangeSet } from './output/writer'
 import { validateProject } from './output/validate'
 import { planChanges } from './transform/engine'
-import type { AiConfig } from '../shared/types/ai'
+import type { AiConfig } from '../shared/ai'
 import type { Logger } from './logger'
 import { silentLogger } from './logger'
 
