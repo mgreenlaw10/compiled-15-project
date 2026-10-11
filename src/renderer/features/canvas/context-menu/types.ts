@@ -11,10 +11,11 @@ import type { ModuleId } from '../../../../shared/types/architecture'
 import type { AppState } from '../../../state/store'
 
 /** Where the right-click landed. */
-export type MenuTarget =
+export type MenuTarget = (
   | { kind: 'pane'; position: CanvasPoint }
   | { kind: 'module'; moduleId: ModuleId; position: CanvasPoint }
   | { kind: 'edge'; edgeId: string; position: CanvasPoint }
+) & { flowPosition?: CanvasPoint }
 
 /** Screen coordinates of the click, for positioning the menu. */
 export interface CanvasPoint {
@@ -26,12 +27,13 @@ export interface MenuItemContext {
   target: MenuTarget
   /** A live snapshot of the store, for deciding what applies. */
   state: AppState
+  fitView?: () => void
 }
 
 export interface MenuItem {
   /** Stable id, unique within the menu. */
   id: string
-  label: string
+  label: string | ((ctx: MenuItemContext) => string)
   /** `true` to draw a separator above this item. */
   separatorBefore?: boolean
   /** Destructive items are drawn in the danger colour. */

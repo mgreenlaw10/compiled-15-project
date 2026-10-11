@@ -18,7 +18,7 @@ export const CHANNEL_LABELS: Record<LogChannel, string> = {
 export function outcomeBadge(status: OperationOutcome['status']): JSX.Element {
   switch (status) {
     case 'applied':
-      return <Badge kind="ok">applied</Badge>
+      return <Badge kind="ok">planned</Badge>
     case 'metadata_only':
       return <Badge kind="info">graph only</Badge>
     case 'partial':

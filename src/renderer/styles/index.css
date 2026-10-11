@@ -45,3 +45,6 @@
 
 /* --- third-party overrides, last so they win ----------------------------- */
 @import './reactflow.css';
+
+/* Review desk composition and theme overrides. */
+@import './review-desk.css';

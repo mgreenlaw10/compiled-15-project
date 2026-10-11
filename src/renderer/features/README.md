@@ -8,10 +8,11 @@ to `../ui` (components) or `../state` (state).
 | --- | --- |
 | `canvas/` | The architecture graph. Owns edge styling (`edges/`) and the right-click menu (`context-menu/`), each with its own registry. |
 | `dialogs/` | Modals, one file each, behind `registry.ts`. |
-| `inspector/` | The right-hand pane: the selected module in detail. |
+| `inspector/` | The selected module in detail, composed into the review panel by the app. |
 | `sidebar/` | The left pane: project info, module list, file explorer. |
 | `toolbar/` | The top toolbar and the status bar. |
-| `bottom-panel/` | Activity, pending changes, results — one file per tab. |
+| `bottom-panel/` | Review panel tabs: preview, module, activity, plan, and results. |
+| `review/` | Pending edits and architecture/source comparisons. Receives the project explorer through app composition. |
 | `presence/` | Multi-writer UI. Empty; see its README. |
 
 ## The rule that keeps these independent

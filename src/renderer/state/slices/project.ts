@@ -86,6 +86,8 @@ Continue?`
         appliedOperationIds: [],
         selectedModuleId: result.graph.modules[0]?.id ?? null,
         selectedFile: null,
+        selectedOperationId: null,
+        bottomTab: 'preview',
         dirty: false,
         busy: 'idle'
       })

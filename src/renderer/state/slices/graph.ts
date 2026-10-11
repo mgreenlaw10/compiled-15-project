@@ -90,6 +90,7 @@ export const createGraphSlice: Slice<GraphSlice> = (set, get) => ({
     set({
       desired: result.graph,
       operations: [...operations, op],
+      selectedOperationId: op.id,
       layout: {
         ...layout,
         positions: fillMissingPositions(result.graph, layout.positions),

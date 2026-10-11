@@ -79,7 +79,7 @@ export type DialogName =
   | 'diff'
   | 'delete-module'
 
-export type BottomTab = 'activity' | 'changes' | 'results'
+export type BottomTab = 'preview' | 'module' | 'activity' | 'changes' | 'results'
 
 export interface ProjectSlice {
   project: ProjectInfo | null
@@ -117,8 +117,10 @@ export interface LayoutSlice {
 export interface SelectionSlice {
   selectedModuleId: ModuleId | null
   selectedFile: string | null
+  selectedOperationId: string | null
   select(id: ModuleId | null): void
   selectFile(path: string | null): void
+  selectOperation(id: string): void
 }
 
 export interface DocumentSlice {
@@ -154,12 +156,17 @@ export interface SettingsSlice {
 
 export interface UiSlice {
   dialog: DialogName
+  addModulePosition: NodePosition | null
+  deskMode: 'architecture' | 'review'
+  focusConnections: boolean
   busy: Busy
   error: string | null
   notice: string | null
   bottomTab: BottomTab
 
-  openDialog(name: DialogName): void
+  openDialog(name: DialogName, position?: NodePosition): void
+  setDeskMode(mode: UiSlice['deskMode']): void
+  setFocusConnections(enabled: boolean): void
   setBottomTab(tab: BottomTab): void
   setError(message: string | null): void
   setNotice(message: string | null): void

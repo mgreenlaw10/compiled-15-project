@@ -7,13 +7,24 @@ import type { Slice, UiSlice } from '../types'
 
 export const createUiSlice: Slice<UiSlice> = (set) => ({
   dialog: null,
+  addModulePosition: null,
+  deskMode: 'review',
+  focusConnections: false,
   busy: 'idle',
   error: null,
   notice: null,
-  bottomTab: 'activity',
+  bottomTab: 'preview',
 
-  openDialog(name) {
-    set({ dialog: name })
+  openDialog(name, position) {
+    set({ dialog: name, addModulePosition: name === 'add-module' ? position ?? null : null })
+  },
+
+  setDeskMode(mode) {
+    set({ deskMode: mode, bottomTab: mode === 'review' ? 'preview' : 'module' })
+  },
+
+  setFocusConnections(enabled) {
+    set({ focusConnections: enabled })
   },
 
   setBottomTab(tab) {

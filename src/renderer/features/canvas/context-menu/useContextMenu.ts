@@ -11,6 +11,7 @@ import { useCallback, useState, type MouseEvent } from 'react'
 import type { Edge, Node } from '@xyflow/react'
 
 import type { MenuTarget } from './types'
+import { useStore } from '../../../state/store'
 
 export interface CanvasContextMenu {
   /** The open menu's target, or `null`. */
@@ -23,7 +24,7 @@ export interface CanvasContextMenu {
   }
 }
 
-export function useContextMenu(): CanvasContextMenu {
+export function useContextMenu(flow: { screenToFlowPosition(position: { x: number; y: number }): { x: number; y: number } } | null): CanvasContextMenu {
   const [target, setTarget] = useState<MenuTarget | null>(null)
 
   const open = useCallback(
@@ -32,9 +33,12 @@ export function useContextMenu(): CanvasContextMenu {
       make: (position: { x: number; y: number }) => MenuTarget
     ) => {
       event.preventDefault()
-      setTarget(make({ x: event.clientX, y: event.clientY }))
+      event.stopPropagation()
+      if (!flow) return
+      const position = { x: event.clientX, y: event.clientY }
+      setTarget({ ...make(position), flowPosition: flow.screenToFlowPosition(position) })
     },
-    []
+    [flow]
   )
 
   const close = useCallback(() => setTarget(null), [])
@@ -49,12 +53,14 @@ export function useContextMenu(): CanvasContextMenu {
         [open]
       ),
       onNodeContextMenu: useCallback(
-        (event: MouseEvent, node: Node) =>
+        (event: MouseEvent, node: Node) => {
+          useStore.getState().select(node.id)
           open(event, (position) => ({
             kind: 'module',
             moduleId: node.id,
             position
-          })),
+          }))
+        },
         [open]
       ),
       onEdgeContextMenu: useCallback(

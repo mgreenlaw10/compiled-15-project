@@ -26,6 +26,7 @@ function Swatch({ entry }: { entry: LegendEntry }): JSX.Element {
 export function EdgeLegend(): JSX.Element {
   return (
     <div className="canvas-legend">
+      <div>Arrow color = source module</div>
       {[...EDGE_LEGEND, ...NODE_LEGEND].map((entry) => (
         <div key={`${entry.label}:${entry.color}`}>
           <Swatch entry={entry} />

@@ -157,3 +157,30 @@
 .canvas-legend .swatch.dashed {
   border-top-style: dashed;
 }
+
+.node-color {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.canvas-tools {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: calc(100% - 24px);
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+.canvas-tools .btn[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--text);
+}

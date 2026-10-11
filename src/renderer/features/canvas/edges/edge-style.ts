@@ -1,30 +1,10 @@
 /**
- * How dependency edges look.
+ * Dependency arrow appearance and its legend live here.
  *
- * Colour on this canvas carries meaning, not decoration: a user should be able
- * to tell a verified import from a declared-but-absent one, and a call
- * dependency from a plain import, without clicking anything. That is why the
- * mapping lives in one place and the legend is generated from the same data —
- * a swatch in the corner that disagrees with the arrows on the canvas is worse
- * than no legend at all.
- *
- * ---------------------------------------------------------------------------
- * Changing how edges are drawn
- * ---------------------------------------------------------------------------
- * Everything visual about an edge is decided here: `EDGE_STYLES` maps each
- * dependency kind to a colour and a dash pattern, `edgeAppearance` resolves one
- * edge against it, and `EDGE_LEGEND` is derived from the result. The canvas
- * calls `toFlowEdge` and renders `EDGE_LEGEND`, so adding a kind or recolouring
- * one does not mean touching `../GraphCanvas.tsx`.
- *
- * Two rules worth keeping:
- *
- *   - An unverified edge must stay visually distinct from a verified one. The
- *     graph presents verified edges as fact; a declared dependency the analyzer
- *     could not find in the source is a different claim and must not look like
- *     one.
- *   - Every colour used on the canvas needs a legend entry. `EDGE_LEGEND`
- *     makes that automatic as long as new kinds go in `EDGE_STYLES`.
+ * Color identifies the source module, matching its node marker and minimap.
+ * Line patterns identify verification: verified dependencies are solid;
+ * declared dependencies are dashed. Kind and weight remain available in
+ * edge labels. Extend EDGE_STYLES when adding a dependency kind.
  */
 
 import { MarkerType, type Edge } from '@xyflow/react'
@@ -42,29 +22,38 @@ export interface EdgeStyle {
   dash?: string
 }
 
-/** Colour and line style per dependency kind, for verified edges. */
+/** Legend and line style per dependency kind, for verified edges. */
 export const EDGE_STYLES: Record<DependencyKind, EdgeStyle> = {
-  imports: { color: '#4d6a94', label: 'verified import' },
-  calls: { color: '#c08cf5', label: 'call' },
-  depends_on: { color: '#4d6a94', label: 'verified import' }
+  imports: { color: 'var(--text-dim)', label: 'verified dependency' },
+  calls: { color: 'var(--text-dim)', label: 'verified dependency' },
+  depends_on: { color: 'var(--text-dim)', label: 'verified dependency' }
 }
 
 /** How an edge the analyzer could not verify in the source is drawn. */
 export const UNVERIFIED_STYLE: EdgeStyle = {
-  color: '#8b93a3',
+  color: 'var(--text-dim)',
   label: 'declared, no import yet',
   dash: '5 4'
 }
 
 const FALLBACK_STYLE: EdgeStyle = {
-  color: '#8b93a3',
+  color: 'var(--text-dim)',
   label: 'dependency'
 }
 
 /** The resolved appearance of one edge. */
 export function edgeAppearance(edge: DependencyEdge): EdgeStyle {
-  if (!edge.verified) return UNVERIFIED_STYLE
-  return EDGE_STYLES[edge.kind] ?? FALLBACK_STYLE
+  const style = edge.verified ? EDGE_STYLES[edge.kind] ?? FALLBACK_STYLE : UNVERIFIED_STYLE
+  return { ...style, color: moduleColor(edge.from) }
+}
+
+/** Stable source-module color shared by arrows, node markers and the minimap. */
+export function moduleColor(id: string): string {
+  let hash = 2166136261
+  for (let index = 0; index < id.length; index += 1) {
+    hash = Math.imul(hash ^ id.charCodeAt(index), 16777619)
+  }
+  return `hsl(${(hash >>> 0) % 360}, 54%, 43%)`
 }
 
 export function edgeColor(edge: DependencyEdge): string {
@@ -89,13 +78,14 @@ export function edgeWidth(edge: DependencyEdge): number {
 }
 
 /** One architecture edge as React Flow wants it. */
-export function toFlowEdge(edge: DependencyEdge): Edge {
+export function toFlowEdge(edge: DependencyEdge, ariaLabel?: string): Edge {
   const style = edgeAppearance(edge)
   return {
     id: edge.id,
     source: edge.from,
     target: edge.to,
     label: edgeLabel(edge),
+    ariaLabel: ariaLabel ?? `${edge.from} to ${edge.to}: ${edge.kind}, ${edge.verified ? 'verified' : 'declared'}`,
     animated: false,
     style: {
       stroke: style.color,
@@ -103,6 +93,8 @@ export function toFlowEdge(edge: DependencyEdge): Edge {
       strokeDasharray: style.dash
     },
     markerEnd: { type: MarkerType.ArrowClosed, color: style.color },
+    labelStyle: { fill: style.color },
+    interactionWidth: 24,
     data: { verified: edge.verified, kind: edge.kind }
   }
 }
@@ -114,8 +106,8 @@ export interface LegendEntry {
 }
 
 /**
- * The canvas legend, derived from the styles above so it cannot drift from what
- * is actually drawn. Kinds that share a colour are collapsed into one entry.
+ * Neutral swatches describe line styles; source-module color is explained
+ * separately in EdgeLegend. Kinds sharing a line style get one entry.
  */
 export const EDGE_LEGEND: readonly LegendEntry[] = (() => {
   const entries: LegendEntry[] = []
@@ -134,7 +126,3 @@ export const EDGE_LEGEND: readonly LegendEntry[] = (() => {
   })
   return entries
 })()
-
-/** Colour for a module node in the minimap. */
-export const NODE_COLOR = '#4d6a94'
-export const PENDING_NODE_COLOR = '#f2c14e'

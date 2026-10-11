@@ -33,4 +33,6 @@ out and say why.
 
 ## Styling
 
-`styles/context-menu.css`, via the `.context-menu*` classes.
+`context-menu.css`, via the `.context-menu*` classes. The menu supports arrow
+keys, Home/End, Escape, and outside-click dismissal. Add-module actions use the
+click's graph coordinates, including the current pan and zoom.

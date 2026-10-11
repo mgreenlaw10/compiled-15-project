@@ -27,7 +27,7 @@ export const createGenerationSlice: Slice<GenerationSlice> = (set, get) => ({
       return
     }
 
-    set({ busy: 'planning', error: null, bottomTab: 'changes', diffs: null })
+    set({ busy: 'planning', error: null, bottomTab: 'changes', deskMode: 'review', diffs: null })
     try {
       const changeSet = await window.cartograph.planChanges(project.root, {
         graph: original,

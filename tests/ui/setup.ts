@@ -45,5 +45,14 @@ if (typeof Element !== 'undefined') {
 
 // React Flow calls these on nodes it renders.
 if (typeof HTMLElement !== 'undefined') {
+  // React 18 requires this when tests use act directly for store updates.
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
   HTMLElement.prototype.scrollIntoView ??= function scrollIntoView() {}
+}
+
+// React Flow measures SVG text labels once measured nodes make edges visible.
+if (typeof SVGElement !== 'undefined') {
+  Object.assign(SVGElement.prototype, {
+    getBBox: () => ({ x: 0, y: 0, width: 40, height: 12 })
+  })
 }

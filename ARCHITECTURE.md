@@ -99,15 +99,13 @@ a one-file change.
 
 Owns `renderer/features/canvas/edges/`.
 
-- `edge-style.ts` is the whole job: `EDGE_STYLES` maps dependency kind →
-  colour and dash, `edgeAppearance` resolves one edge, `toFlowEdge` builds the
-  React Flow edge, and `EDGE_LEGEND` is **derived from the same table** so the
-  legend cannot disagree with the canvas.
-- `EdgeLegend.tsx` renders from that data. `GraphCanvas.tsx` calls
-  `toFlowEdge` and renders `<EdgeLegend />` and nothing else about colour.
-- Two rules worth keeping: an unverified edge must stay visually distinct from
-  a verified one (the graph presents verified edges as fact), and every colour
-  on the canvas needs a legend entry.
+- `edge-style.ts` owns arrow appearance: `moduleColor` supplies a stable
+  source-module color, `EDGE_STYLES` describes dependency line styles,
+  `edgeAppearance` combines them, and `toFlowEdge` builds the React Flow edge.
+- Node markers and the minimap share `moduleColor`. The legend explains source
+  color and derives the solid/dashed entries from the line-style registry.
+- Verified dependencies are solid; declared dependencies are dashed. Focus
+  mode dims unrelated arrows and modules without recording structural edits.
 - Note `DependencyKind` is currently `imports | depends_on | calls`; widening it
   means editing `shared/types/architecture.ts`, which is shared — coordinate.
 

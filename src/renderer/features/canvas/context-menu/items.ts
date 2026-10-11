@@ -19,70 +19,64 @@
 import { useStore } from '../../../state/store'
 import type { MenuItem } from './types'
 
+const idle = ({ state }: import('./types').MenuItemContext): string | false =>
+  state.busy === 'idle' ? false : 'Wait for the current task to finish'
+
 export const CANVAS_MENU_ITEMS: readonly MenuItem[] = [
   {
-    id: 'add-module',
-    label: 'Add module…',
-    accelerator: 'Ctrl+Shift+N',
-    appliesTo: ['pane'],
-    run: ({ state }) => state.openDialog('add-module')
+    id: 'module-expand', label: 'Show files', appliesTo: ['module'],
+    visible: ({ state, target }) => target.kind === 'module' && !state.layout.expanded[target.moduleId],
+    run: ({ state, target }) => { if (target.kind === 'module') state.setExpanded(target.moduleId, true) }
   },
   {
-    id: 'auto-layout',
-    label: 'Auto layout',
-    accelerator: 'Ctrl+L',
-    appliesTo: ['pane'],
-    disabled: ({ state }) =>
-      state.desired === null ? 'No project is open' : false,
-    run: ({ state }) => state.relayout()
+    id: 'module-collapse', label: 'Hide files', appliesTo: ['module'],
+    visible: ({ state, target }) => target.kind === 'module' && state.layout.expanded[target.moduleId] === true,
+    run: ({ state, target }) => { if (target.kind === 'module') state.setExpanded(target.moduleId, false) }
   },
   {
-    id: 'module-expand',
-    label: 'Show files',
-    appliesTo: ['module'],
-    visible: ({ state, target }) =>
-      target.kind === 'module' && state.layout.expanded[target.moduleId] !== true,
-    run: ({ state, target }) => {
-      if (target.kind === 'module') state.setExpanded(target.moduleId, true)
-    }
+    id: 'module-focus', label: 'Focus connections', appliesTo: ['module'],
+    run: ({ state }) => state.setFocusConnections(true)
   },
   {
-    id: 'module-collapse',
-    label: 'Hide files',
-    appliesTo: ['module'],
-    visible: ({ state, target }) =>
-      target.kind === 'module' && state.layout.expanded[target.moduleId] === true,
-    run: ({ state, target }) => {
-      if (target.kind === 'module') state.setExpanded(target.moduleId, false)
-    }
-  },
-  {
-    id: 'module-delete',
-    label: 'Delete module…',
-    appliesTo: ['module'],
-    separatorBefore: true,
-    danger: true,
+    id: 'module-delete', label: 'Delete module…', appliesTo: ['module'], danger: true, disabled: idle,
     run: ({ state, target }) => {
       if (target.kind !== 'module') return
       state.select(target.moduleId)
       state.openDialog('delete-module')
     }
   },
-  {
-    id: 'edge-remove',
-    label: 'Remove dependency',
-    appliesTo: ['edge'],
-    danger: true,
+  ...(['source', 'target'] as const).map((endpoint): MenuItem => ({
+    id: `edge-inspect-${endpoint}`, appliesTo: ['edge'],
+    label: ({ state, target }) => {
+      const edge = target.kind === 'edge' ? state.desired?.edges.find((e) => e.id === target.edgeId) : undefined
+      const id = endpoint === 'source' ? edge?.from : edge?.to
+      return `Inspect ${endpoint}: ${state.desired?.modules.find((m) => m.id === id)?.name ?? 'module'}`
+    },
     run: ({ state, target }) => {
-      if (target.kind !== 'edge') return
-      const edge = state.desired?.edges.find((e) => e.id === target.edgeId)
-      if (!edge) return
-      state.dispatchOperation({
-        type: 'remove_dependency',
-        from: edge.from,
-        to: edge.to
-      })
+      const edge = target.kind === 'edge' ? state.desired?.edges.find((e) => e.id === target.edgeId) : undefined
+      if (edge) state.select(endpoint === 'source' ? edge.from : edge.to)
     }
+  })),
+  {
+    id: 'edge-remove', label: 'Remove dependency', appliesTo: ['edge'], danger: true, disabled: idle,
+    run: ({ state, target }) => {
+      const edge = target.kind === 'edge' ? state.desired?.edges.find((e) => e.id === target.edgeId) : undefined
+      if (edge) state.dispatchOperation({ type: 'remove_dependency', from: edge.from, to: edge.to })
+    }
+  },
+  {
+    id: 'add-module', label: 'Add module here…', separatorBefore: true,
+    disabled: (ctx) => !ctx.state.desired ? 'No project is open' : idle(ctx),
+    run: ({ state, target }) => state.openDialog('add-module', target.flowPosition)
+  },
+  {
+    id: 'fit-view', label: 'Fit graph to view',
+    run: ({ fitView }) => fitView?.()
+  },
+  {
+    id: 'auto-layout', label: 'Auto layout', accelerator: 'Ctrl+L',
+    disabled: (ctx) => !ctx.state.desired ? 'No project is open' : idle(ctx),
+    run: ({ state }) => state.relayout()
   }
 ]
 

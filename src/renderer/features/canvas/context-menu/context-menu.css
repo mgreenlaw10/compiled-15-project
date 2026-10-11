@@ -6,6 +6,9 @@
   position: fixed;
   z-index: 60;
   min-width: 200px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow: auto;
   padding: 4px;
   background: var(--bg-raised);
   border: 1px solid var(--border-strong);
@@ -28,7 +31,8 @@
   cursor: pointer;
 }
 
-.context-menu-item:hover:not(:disabled) {
+.context-menu-item:hover:not(:disabled),
+.context-menu-item:focus-visible {
   background: var(--bg-hover);
 }
 
@@ -37,7 +41,8 @@
   cursor: default;
 }
 
-.context-menu-item.is-danger:hover:not(:disabled) {
+.context-menu-item.is-danger:hover:not(:disabled),
+.context-menu-item.is-danger:focus-visible {
   background: rgba(242, 112, 107, 0.14);
   color: var(--danger);
 }

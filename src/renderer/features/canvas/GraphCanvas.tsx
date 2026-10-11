@@ -15,7 +15,7 @@
  * an arrow or adding a menu item does not mean editing this file.
  */
 
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Background,
   BackgroundVariant,
@@ -27,6 +27,7 @@ import {
   type Connection,
   type Edge,
   type Node,
+  type ReactFlowInstance,
   type OnNodeDrag
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
@@ -36,8 +37,7 @@ import { useModulesWithPendingChanges, useStore } from '../../state/store'
 import { ContextMenu, useContextMenu } from './context-menu'
 import {
   EdgeLegend,
-  NODE_COLOR,
-  PENDING_NODE_COLOR,
+  moduleColor,
   toFlowEdge
 } from './edges'
 import {
@@ -52,6 +52,10 @@ export function GraphCanvas(): JSX.Element {
   const graph = useStore((s) => s.desired)
   const layout = useStore((s) => s.layout)
   const selectedModuleId = useStore((s) => s.selectedModuleId)
+  const focusConnections = useStore((s) => s.focusConnections)
+  const setFocusConnections = useStore((s) => s.setFocusConnections)
+  const busy = useStore((s) => s.busy)
+  const dialog = useStore((s) => s.dialog)
   const pending = useModulesWithPendingChanges()
 
   const select = useStore((s) => s.select)
@@ -61,7 +65,10 @@ export function GraphCanvas(): JSX.Element {
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<ModuleNodeData>>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
-  const menu = useContextMenu()
+  const [flow, setFlow] = useState<ReactFlowInstance<Node<ModuleNodeData>, Edge> | null>(null)
+  const menu = useContextMenu(flow)
+
+  useEffect(menu.close, [graph, busy, dialog, menu.close])
 
   const onToggleExpand = useCallback(
     (id: string) => setExpanded(id, !layout.expanded[id]),
@@ -84,13 +91,20 @@ export function GraphCanvas(): JSX.Element {
   const computed = useMemo(() => {
     if (!graph) return { nodes: [] as Node<ModuleNodeData>[], edges: [] as Edge[] }
 
+    const focused = focusConnections && selectedModuleId !== null
+    const neighbors = new Set([selectedModuleId])
+    for (const edge of graph.edges) {
+      if (edge.from === selectedModuleId) neighbors.add(edge.to)
+      if (edge.to === selectedModuleId) neighbors.add(edge.from)
+    }
+
     const nextNodes: Node<ModuleNodeData>[] = graph.modules.map((module) => ({
       id: module.id,
       type: 'module',
       position: layout.positions[module.id] ?? { x: 0, y: 0 },
       // The custom node draws its own frame, so React Flow's default
       // chrome is turned off.
-      style: { width: 240 },
+      style: { width: 240, opacity: focused && !neighbors.has(module.id) ? 0.3 : 1 },
       selected: module.id === selectedModuleId,
       deletable: false,
       data: {
@@ -103,8 +117,14 @@ export function GraphCanvas(): JSX.Element {
       }
     }))
 
-    return { nodes: nextNodes, edges: graph.edges.map(toFlowEdge) }
-  }, [graph, layout, selectedModuleId, pending, onToggleExpand, onDropFile])
+    const names = new Map(graph.modules.map((module) => [module.id, module.name]))
+    const nextEdges = graph.edges.map((edge) => {
+      const rendered = toFlowEdge(edge, `${names.get(edge.from) ?? edge.from} to ${names.get(edge.to) ?? edge.to}: ${edge.kind}, ${edge.verified ? 'verified' : 'declared'}`)
+      rendered.style = { ...rendered.style, opacity: focused && edge.from !== selectedModuleId && edge.to !== selectedModuleId ? 0.12 : 1 }
+      return rendered
+    })
+    return { nodes: nextNodes, edges: nextEdges }
+  }, [graph, layout, selectedModuleId, focusConnections, pending, onToggleExpand, onDropFile])
 
   // React Flow owns node positions while a drag is in flight, so the canvas is
   // re-seeded from the store whenever the architecture or the layout changes
@@ -170,13 +190,16 @@ export function GraphCanvas(): JSX.Element {
     <div className="canvas-wrap">
       <ReactFlow
         nodes={nodes}
+        onInit={setFlow}
         edges={edges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeDragStop={onNodeDragStop}
-        onNodeClick={(_event, node) => select(node.id)}
-        onPaneClick={() => select(null)}
+        onNodeClick={(_event, node) => { menu.close(); select(node.id) }}
+        onPaneClick={() => { menu.close(); select(null) }}
+        onMoveStart={menu.close}
+        onNodeDragStart={menu.close}
         onConnect={onConnect}
         onEdgesDelete={onEdgesDelete}
         {...menu.handlers}
@@ -189,17 +212,15 @@ export function GraphCanvas(): JSX.Element {
         fitView
         fitViewOptions={{ padding: 0.18, maxZoom: 1 }}
         proOptions={{ hideAttribution: true }}
-        colorMode="dark"
+        colorMode="light"
       >
-        <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="#2a2f38" />
+        <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="#cdd0df" />
         <Controls showInteractive={false} />
         <MiniMap
           pannable
           zoomable
-          nodeColor={(node) =>
-            pending.has(node.id) ? PENDING_NODE_COLOR : NODE_COLOR
-          }
-          maskColor="rgba(20, 22, 26, 0.72)"
+          nodeColor={(node) => moduleColor(node.id)}
+          maskColor="rgba(241, 242, 248, 0.72)"
         />
       </ReactFlow>
 
@@ -216,8 +237,19 @@ export function GraphCanvas(): JSX.Element {
 
       <EdgeLegend />
 
+      <div className="canvas-tools">
+        <button className={`btn btn--sm ${focusConnections ? 'btn--primary' : ''}`} disabled={!selectedModuleId} aria-pressed={focusConnections} onClick={() => setFocusConnections(!focusConnections)}>
+          {focusConnections ? 'Focus connections · on' : 'Focus connections'}
+        </button>
+        <button className="btn btn--sm" disabled={!selectedModuleId || !flow} onClick={() => {
+          const position = selectedModuleId ? layout.positions[selectedModuleId] : null
+          if (position) void flow?.setCenter(position.x + 120, position.y + 60, { zoom: 0.9, duration: 200 })
+        }}>Center selected</button>
+        <span className="dim">Right-click for actions</span>
+      </div>
+
       {menu.target ? (
-        <ContextMenu target={menu.target} onClose={menu.close} />
+        <ContextMenu target={menu.target} onClose={menu.close} onFitView={() => { void flow?.fitView({ padding: 0.18, maxZoom: 1, duration: 200 }) }} />
       ) : null}
     </div>
   )
