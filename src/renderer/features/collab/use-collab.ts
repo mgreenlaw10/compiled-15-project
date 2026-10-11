@@ -22,6 +22,7 @@ import {
   moduleCollabState,
   type AgentSession,
   type Developer,
+  type IntegrationRequest,
   type ModuleCollabState,
   type Task
 } from '../../../shared/collab'
@@ -78,6 +79,17 @@ export function useActiveTasks(): Task[] {
 export function useSessions(): AgentSession[] {
   const snapshot = useStore((s) => s.collab)
   return useMemo(() => snapshot?.state.sessions ?? [], [snapshot])
+}
+
+export function useIntegrations(): IntegrationRequest[] {
+  const snapshot = useStore((s) => s.collab)
+  return useMemo(() => snapshot?.state.integrations ?? [], [snapshot])
+}
+
+/** Task worktrees that exist on *this* machine. Local paths, never shared. */
+export function useLocalWorktrees(): { taskId: string; path: string }[] {
+  const snapshot = useStore((s) => s.collab)
+  return useMemo(() => snapshot?.worktrees ?? [], [snapshot])
 }
 
 export function useDevelopers(): Developer[] {

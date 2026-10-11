@@ -16,7 +16,7 @@ import { useState } from 'react'
 
 import { useStore } from '../../state/store'
 import { Badge, Banner, Empty, formatTime } from '../../ui'
-import { useMyDeveloperId, useSessionViews } from '../collab'
+import { useLocalWorktrees, useMyDeveloperId, useSessionViews } from '../collab'
 
 export function AgentsTab(): JSX.Element {
   const selectedTaskId = useStore((s) => s.selectedTaskId)
@@ -25,7 +25,7 @@ export function AgentsTab(): JSX.Element {
   const cancelAgent = useStore((s) => s.cancelAgent)
   const startAgent = useStore((s) => s.startAgent)
   const openDialog = useStore((s) => s.openDialog)
-  const locallyRunning = useStore((s) => s.collab?.worktrees ?? [])
+  const locallyRunning = useLocalWorktrees()
 
   const sessions = useSessionViews()
   const myId = useMyDeveloperId()

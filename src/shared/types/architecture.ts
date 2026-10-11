@@ -84,9 +84,23 @@ export interface ModuleMetadata {
   loc: number
   /** Detected domain keywords, e.g. `['auth', 'http']`. */
   tags: string[]
-  /** Reserved for multiplayer: which collaborator owns this module. */
+  /**
+   * @deprecated Superseded by collaboration state; always `null`.
+   *
+   * Module ownership lives on the `collab-state` branch as a
+   * `ModuleReservation`, not here. Keeping it out of the graph is deliberate:
+   * the graph is derived from source and is written back to it, so storing a
+   * claim here would turn "I am working on this" into a source-code change
+   * that two developers conflict over textually. Read ownership through
+   * `moduleCollabState` in `shared/collab/status.ts`.
+   */
   owner: string | null
-  /** Reserved for multiplayer: soft lock held while an agent edits the module. */
+  /**
+   * @deprecated Superseded by collaboration state; always `null`.
+   *
+   * See `owner`. A live agent's hold on a module is a reservation lease plus a
+   * session heartbeat, which can expire — a field on the graph cannot.
+   */
   lockedBy: string | null
 }
 

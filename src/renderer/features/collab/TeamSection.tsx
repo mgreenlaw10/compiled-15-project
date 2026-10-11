@@ -11,6 +11,7 @@ import { useStore } from '../../state/store'
 import { Badge, Empty } from '../../ui'
 import {
   useActiveTasks,
+  useIntegrations,
   useCollabEnabled,
   useDevelopers,
   useMyDeveloperId,
@@ -38,7 +39,7 @@ export function TeamSection(): JSX.Element {
   const selectTask = useStore((s) => s.selectTask)
   const setBottomTab = useStore((s) => s.setBottomTab)
   const select = useStore((s) => s.select)
-  const integrations = useStore((s) => s.collab?.state.integrations ?? [])
+  const integrations = useIntegrations()
 
   const developers = useDevelopers()
   const tasks = useActiveTasks()
