@@ -20,6 +20,7 @@ export type {
   AppState,
   BottomTab,
   Busy,
+  CollabSlice,
   DialogName,
   DocumentSlice,
   GenerationSlice,

@@ -18,6 +18,11 @@
 import type { ComponentType } from 'react'
 
 import type { DialogName } from '../../state/store'
+import {
+  CollabSetupDialog,
+  CreateTaskDialog,
+  IntegrationDialog
+} from '../collab'
 import { AddModuleDialog } from './AddModuleDialog'
 import { DeleteModuleDialog } from './DeleteModuleDialog'
 import { DiffViewerDialog } from './DiffViewerDialog'
@@ -32,5 +37,8 @@ export const DIALOGS: Record<OpenDialogName, ComponentType> = {
   'delete-module': DeleteModuleDialog,
   settings: SettingsDialog,
   diff: DiffViewerDialog,
-  generate: GenerateDialog
+  generate: GenerateDialog,
+  'collab-setup': CollabSetupDialog,
+  'create-task': CreateTaskDialog,
+  integration: IntegrationDialog
 }

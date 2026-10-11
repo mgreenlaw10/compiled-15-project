@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ModuleNode } from '../../../shared/types/architecture'
 import { dependenciesOf, dependentsOf, importantSymbols } from '../../../shared/graph/selectors'
 import { useModulesWithPendingChanges, useStore } from '../../state/store'
+import { CollaborationPanel } from '../collab'
 import { Badge, Empty, SectionTitle, plural } from '../../ui'
 import { FILE_DRAG_MIME, type FileDragPayload } from '../canvas/ModuleNodeView'
 import { ProgramInspector } from './ProgramInspector'
@@ -553,6 +554,8 @@ export function Inspector(): JSX.Element {
           </button>
         </div>
       </div>
+
+      <CollaborationPanel />
     </aside>
   )
 }

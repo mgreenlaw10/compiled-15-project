@@ -194,6 +194,102 @@ export function createFakeApi(options: FakeApiOptions = {}): FakeApi {
       record('cancelWork')
     },
 
+    // --- collaboration ----------------------------------------------------
+    // Stubbed as "not a Git repository", which is the single-player path these
+    // tests exercise: the collaboration slice stays null and the UI must look
+    // exactly as it did before multiplayer existed. Git-backed collaboration
+    // is covered by tests/integration/collab-sync.test.ts against real clones.
+    async inspectWorkspace(root) {
+      record('inspectWorkspace', root)
+      return {
+        root,
+        isGitRepository: false,
+        remoteUrl: null,
+        currentBranch: null,
+        headCommit: null,
+        collaborationInitialized: false,
+        connected: false,
+        dirtyFileCount: 0,
+        identity: { name: 'Test', email: 'test@example.com' },
+        developerId: null
+      }
+    },
+
+    async initializeCollaboration() {
+      throw new Error('Collaboration is not available in the UI test fake')
+    },
+
+    async joinCollaboration() {
+      throw new Error('Collaboration is not available in the UI test fake')
+    },
+
+    async cloneProject() {
+      throw new Error('Collaboration is not available in the UI test fake')
+    },
+
+    async connect() {
+      throw new Error('Collaboration is not available in the UI test fake')
+    },
+
+    async disconnect() {
+      record('collabDisconnect')
+    },
+
+    async getSnapshot() {
+      return null
+    },
+
+    async synchronize() {
+      throw new Error('Collaboration is not available in the UI test fake')
+    },
+
+    async createTask() {
+      throw new Error('Collaboration is not available in the UI test fake')
+    },
+
+    async updateTask() {},
+    async claimModule() {},
+    async releaseModule() {},
+
+    async startAgent() {
+      return { sessionId: '', started: false, message: 'not available' }
+    },
+
+    async sendInstruction() {},
+    async cancelAgent() {},
+
+    async assessIntegration() {
+      throw new Error('Collaboration is not available in the UI test fake')
+    },
+
+    async submitIntegration() {
+      throw new Error('Collaboration is not available in the UI test fake')
+    },
+
+    async integrateTask() {
+      throw new Error('Collaboration is not available in the UI test fake')
+    },
+
+    async taskDiff() {
+      return { patch: '', changedPaths: [] }
+    },
+
+    onCollabChanged() {
+      return () => {}
+    },
+
+    async getTasks() {
+      return []
+    },
+
+    async getSessions() {
+      return []
+    },
+
+    async getReservations() {
+      return []
+    },
+
     async getAppInfo() {
       return { version: 'test', electron: 'test', node: process.versions.node }
     }

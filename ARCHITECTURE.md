@@ -39,7 +39,7 @@ Every one of these is a registry or manifest. Adding to it is additive.
 | --- | --- | --- |
 | A **language** | `shared/languages/catalog.ts` | new `core/analyzer/languages/<lang>/`, register in that dir's `index.ts` |
 | An **AI provider** | `shared/ai/providers.ts` | new `core/ai/providers/<name>.ts` (copy `luminal.ts` if OpenAI-compatible), register in `providers/index.ts` |
-| An **IPC capability** | `shared/ipc/channels.ts` + a `shared/ipc/<domain>.ts` | new `main/ipc/modules/<domain>.ts` + `preload/bridges/<domain>.ts` |
+| An **IPC capability** | `shared/ipc/channels.ts` + a `shared/ipc/<domain>.ts` | new `main/ipc/modules/<domain>.ts` + `preload/bridges/<domain>.ts` (see `collab.ts` for a worked example) |
 | A **dialog** | `renderer/state/types.ts` (`DialogName`) | new `renderer/features/dialogs/<X>Dialog.tsx`, register in `dialogs/registry.ts` |
 | A **context-menu item** | — | `renderer/features/canvas/context-menu/items.ts` |
 | **Edge colours / legend** | — | `renderer/features/canvas/edges/edge-style.ts` |
@@ -140,20 +140,37 @@ than just readable:
   `core/transform/imports.ts`, TypeScript-specific today.
 - Validation (`tsc`, `npm test`) is `core/output/validate.ts`.
 
-### 5 · Multi-user concurrent work — **person C**
+### 5 · Multi-user concurrent work — **implemented**
 
-Owns `shared/collab/`, `renderer/features/presence/`,
-`renderer/state/slices/session.ts`, and a new `main/ipc/modules/collab.ts`.
+Git-backed multiplayer development. See **[COLLABORATION.md](COLLABORATION.md)**
+for how to use it and what it cannot do; the short version:
 
-The merge primitive already exists and is already tested: operations are plain
-JSON carrying an `actor` and the `baseVersion` they were authored against, and
-`applyOperations` replays a log onto a graph reporting each operation that no
-longer applies instead of dropping it. `state/slices/document.ts`
-(`restoreDocument`) is already a merge of exactly that kind.
+| Path | Responsibility |
+| --- | --- |
+| `shared/collab/` | Data model, per-entity merge, derived module status. Pure data. |
+| `core/git/git.ts` | **All** raw Git. Refuses force pushes; never checks out the coordination branch. |
+| `core/collab/provider.ts` | `CollaborationProvider` — the seam a real-time transport slots into. |
+| `core/collab/git-provider.ts` | Fetch, merge by value, non-force push, retry; durable local queue. |
+| `core/collab/tasks.ts` | Per-task worktrees and branches. |
+| `core/collab/scope.ts` | Write-scope validation against the real diff. |
+| `core/collab/conflicts.ts` | Five conflict kinds, explained via the program graph. |
+| `core/collab/integration.ts` | Assess, validate, merge, publish. |
+| `core/collab/agent-*.ts` | Graph-aware briefs; shared sessions with one execution host. |
+| `main/services/collab-service.ts` | One live provider per project; the sync timer. |
+| `renderer/features/collab/` | All collaboration UI. |
 
-Read `renderer/features/presence/README.md` first — it lays out what exists and
-what a build-out looks like. Adding the transport is a new IPC module plus a
-channel group, which is additive by construction.
+Three invariants worth not breaking:
+
+- **No raw Git above `core/git`,** and none at all in the renderer. The UI sees
+  the collaboration model, never a Git concept the backend has not translated.
+- **No force pushes, no history rewriting.** `Git.push` refuses them.
+  Divergence is resolved by merging state and retrying.
+- **Staleness is never hidden.** When the client has not synchronized recently
+  enough to trust what it holds, statuses read `Unknown`. Confident claims from
+  unsynchronized data are worse than admitting the gap.
+
+Collaboration is entirely opt-in: a project without it shows no Team panel, no
+extra tabs and no node overlays.
 
 ## Shared files — coordinate before editing
 

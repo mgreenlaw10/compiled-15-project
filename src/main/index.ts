@@ -46,7 +46,8 @@ if (!app.requestSingleInstanceLock()) {
     const settings = SettingsStore.create()
     disposeHandlers = registerHandlers({
       settings,
-      getWindow: () => mainWindow
+      getWindow: () => mainWindow,
+      userDataDir: app.getPath('userData')
     })
 
     installMenu({ send, getWindow: () => mainWindow })

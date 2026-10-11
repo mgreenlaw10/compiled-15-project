@@ -11,10 +11,12 @@
 
 import { ipcMain, type BrowserWindow } from 'electron'
 
-import { IPC, type LogEvent } from '../../shared/ipc'
+import { COLLAB_CHANNELS, IPC, type LogEvent } from '../../shared/ipc'
+import type { ArchitectureGraph } from '../../shared/types/architecture'
 import { createLogger, type Logger } from '../../core/logger'
 import { createService, type CartographService } from '../../core/pipeline'
 import { activeAiConfig } from '../services/ai-config'
+import { CollabService } from '../services/collab-service'
 import type { SettingsStore } from '../services/settings-store'
 import { WorkController, type HandlerContext, type HandlerMap } from './context'
 import { HANDLER_MODULES } from './modules'
@@ -24,6 +26,8 @@ export type { HandlerContext, HandlerModule } from './context'
 export interface RegisterOptions {
   settings: SettingsStore
   getWindow: () => BrowserWindow | null
+  /** Electron's userData directory, for the per-install collaboration identity. */
+  userDataDir: string
 }
 
 export function registerHandlers(options: RegisterOptions): () => void {
@@ -45,6 +49,25 @@ export function registerHandlers(options: RegisterOptions): () => void {
     getAiConfig
   })
 
+  // The last graph the analyzer produced. Collaboration reads it to brief
+  // agents and to explain conflicts in architectural terms; caching it here
+  // avoids making the renderer ship a graph with every collaboration call.
+  let lastGraph: ArchitectureGraph | null = null
+  const getGraph = (): ArchitectureGraph | null => lastGraph
+
+  const collab = new CollabService({
+    logger,
+    userDataDir: options.userDataDir,
+    getAiConfig,
+    getGraph,
+    onChanged: (snapshot) => {
+      const win = options.getWindow()
+      if (win && !win.isDestroyed()) {
+        win.webContents.send(COLLAB_CHANNELS.collabChanged, snapshot)
+      }
+    }
+  })
+
   const ctx: HandlerContext = {
     settings: options.settings,
     getWindow: options.getWindow,
@@ -52,7 +75,9 @@ export function registerHandlers(options: RegisterOptions): () => void {
     logger,
     log: logger.child('app'),
     work,
-    getAiConfig
+    getAiConfig,
+    collab,
+    getGraph
   }
 
   const maps = HANDLER_MODULES.map((module) => module(ctx))
@@ -86,10 +111,25 @@ export function registerHandlers(options: RegisterOptions): () => void {
     })
   }
 
+  // Analysis results flow through this handler, so the cache is kept where the
+  // result already passes rather than adding a channel for it.
+  const analyzeChannel = IPC.analyze
+  const originalAnalyze = handlers[analyzeChannel] as
+    | ((...args: unknown[]) => Promise<{ graph: ArchitectureGraph }>)
+    | undefined
+  if (originalAnalyze) {
+    handlers[analyzeChannel] = (async (...args: unknown[]) => {
+      const result = await originalAnalyze(...args)
+      lastGraph = result.graph
+      return result
+    }) as never
+  }
+
   return () => {
     for (const channel of Object.keys(handlers)) {
       ipcMain.removeHandler(channel)
     }
     work.cancel()
+    void collab.disconnect()
   }
 }

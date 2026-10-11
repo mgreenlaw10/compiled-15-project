@@ -13,6 +13,7 @@
  */
 
 import type { HandlerModule } from '../context'
+import { collabHandlers } from './collab'
 import { documentHandlers } from './document'
 import { generationHandlers } from './generation'
 import { projectHandlers } from './project'
@@ -24,5 +25,6 @@ export const HANDLER_MODULES: readonly HandlerModule[] = [
   documentHandlers,
   generationHandlers,
   settingsHandlers,
+  collabHandlers,
   systemHandlers
 ]

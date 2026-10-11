@@ -33,6 +33,33 @@ export const SETTINGS_CHANNELS = {
   testApiKey: 'cartograph:test-api-key'
 } as const
 
+export const COLLAB_CHANNELS = {
+  inspectWorkspace: 'cartograph:collab-inspect-workspace',
+  initializeCollaboration: 'cartograph:collab-initialize',
+  joinCollaboration: 'cartograph:collab-join',
+  cloneProject: 'cartograph:collab-clone',
+  collabConnect: 'cartograph:collab-connect',
+  collabDisconnect: 'cartograph:collab-disconnect',
+  getSnapshot: 'cartograph:collab-get-snapshot',
+  synchronize: 'cartograph:collab-synchronize',
+  createTask: 'cartograph:collab-create-task',
+  updateTask: 'cartograph:collab-update-task',
+  claimModule: 'cartograph:collab-claim-module',
+  releaseModule: 'cartograph:collab-release-module',
+  startAgent: 'cartograph:collab-start-agent',
+  sendInstruction: 'cartograph:collab-send-instruction',
+  cancelAgent: 'cartograph:collab-cancel-agent',
+  assessIntegration: 'cartograph:collab-assess-integration',
+  submitIntegration: 'cartograph:collab-submit-integration',
+  integrateTask: 'cartograph:collab-integrate-task',
+  taskDiff: 'cartograph:collab-task-diff',
+  getTasks: 'cartograph:collab-get-tasks',
+  getSessions: 'cartograph:collab-get-sessions',
+  getReservations: 'cartograph:collab-get-reservations',
+  /** Pushed to the renderer when shared state changes. */
+  collabChanged: 'cartograph:collab-changed'
+} as const
+
 export const SYSTEM_CHANNELS = {
   chooseOutputDirectory: 'cartograph:choose-output-directory',
   revealInFolder: 'cartograph:reveal-in-folder',
@@ -47,6 +74,7 @@ export const IPC = {
   ...DOCUMENT_CHANNELS,
   ...GENERATION_CHANNELS,
   ...SETTINGS_CHANNELS,
+  ...COLLAB_CHANNELS,
   ...SYSTEM_CHANNELS
 } as const
 

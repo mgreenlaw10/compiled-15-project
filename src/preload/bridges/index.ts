@@ -9,6 +9,7 @@
  */
 
 import type { CartographApi } from '../../shared/ipc'
+import { collabBridge } from './collab'
 import { documentBridge } from './document'
 import { generationBridge } from './generation'
 import { projectBridge } from './project'
@@ -20,5 +21,6 @@ export const api: CartographApi = {
   ...documentBridge,
   ...generationBridge,
   ...settingsBridge,
+  ...collabBridge,
   ...systemBridge
 }

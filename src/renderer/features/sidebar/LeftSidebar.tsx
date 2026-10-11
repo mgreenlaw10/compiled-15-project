@@ -11,6 +11,7 @@ import { useMemo, useState } from 'react'
 import type { FileTreeNode } from '../../../shared/types/project'
 import { moduleStats } from '../../../shared/graph/selectors'
 import { useModulesWithPendingChanges, useStore } from '../../state/store'
+import { TeamSection } from '../collab'
 import { Badge, Empty, plural } from '../../ui'
 import { FILE_DRAG_MIME, type FileDragPayload } from '../canvas/ModuleNodeView'
 
@@ -298,6 +299,13 @@ export function LeftSidebar(): JSX.Element {
           </button>
         </div>
         <ProjectInfoSection />
+      </div>
+
+      <div className="pane-section">
+        <div className="pane-header">
+          <span>Team</span>
+        </div>
+        <TeamSection />
       </div>
 
       <div className="pane-section pane-section--grow">

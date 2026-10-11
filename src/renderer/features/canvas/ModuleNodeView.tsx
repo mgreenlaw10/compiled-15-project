@@ -15,7 +15,9 @@
 import { useState, type DragEvent } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 
+import type { ModuleCollabState } from '../../../shared/collab'
 import type { ModuleNode } from '../../../shared/types/architecture'
+import { ModuleCollabBadge } from '../collab/ModuleCollabBadge'
 import { Badge } from '../../ui'
 
 export const FILE_DRAG_MIME = 'application/x-cartograph-file'
@@ -32,6 +34,11 @@ export interface ModuleNodeData extends Record<string, unknown> {
   expanded: boolean
   onToggleExpand: (id: string) => void
   onDropFile: (payload: FileDragPayload, targetModuleId: string) => void
+  /** Collaboration state, or `undefined` when collaboration is off. */
+  collab?: ModuleCollabState | undefined
+  /** A neighbour's in-flight work that could affect this module. */
+  collabWarning?: string | undefined
+  myDeveloperId?: string | null
 }
 
 function confidenceLabel(value: number): string {
@@ -45,12 +52,15 @@ export function ModuleNodeView({
   data
 }: NodeProps & { data: ModuleNodeData }): JSX.Element {
   const [isDropTarget, setIsDropTarget] = useState(false)
-  const { module, isSelected, isPending, expanded } = data
+  const { module, isSelected, isPending, expanded, collab, collabWarning } = data
 
   const classes = ['module-node']
   if (isSelected) classes.push('is-selected')
   if (isPending) classes.push('is-pending')
   if (isDropTarget) classes.push('is-drop-target')
+  if (collab && collab.status !== 'available') {
+    classes.push(`is-collab-${collab.status}`)
+  }
 
   const acceptsDrag = (event: DragEvent): boolean =>
     Array.from(event.dataTransfer.types).includes(FILE_DRAG_MIME)
@@ -142,6 +152,14 @@ export function ModuleNodeView({
             </li>
           ))}
         </ul>
+      ) : null}
+
+      {collab ? (
+        <ModuleCollabBadge
+          state={collab}
+          warning={collabWarning}
+          myDeveloperId={data.myDeveloperId ?? null}
+        />
       ) : null}
 
       <Handle type="source" position={Position.Right} />
