@@ -20,6 +20,10 @@ import { createWindow } from './window'
 const distDir = path.dirname(fileURLToPath(import.meta.url))
 const isDev = !app.isPackaged
 
+// Each design runs as its own native app, with an independent instance lock.
+app.setName('Cartograph Atlas')
+app.setPath('userData', path.join(app.getPath('appData'), 'Cartograph Mockups', 'Atlas'))
+
 let mainWindow: BrowserWindow | null = null
 let disposeHandlers: (() => void) | null = null
 

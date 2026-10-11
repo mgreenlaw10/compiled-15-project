@@ -8,10 +8,12 @@ not call it, read a real project, run generation, or write source files.
 
 ```sh
 npm ci
-npm run mockup
+npm run dev
 ```
 
-Open http://127.0.0.1:5181. `npm run dev` also runs the replacement in Electron.
+Optional browser preview at http://127.0.0.1:5181. `npm run dev` opens this design in its own native Electron window.
+Each concept has isolated app data and an independent instance lock.
+For a built native app, run `npm run build` followed by `npm start`.
 
 ## Try
 

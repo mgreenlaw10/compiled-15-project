@@ -22,8 +22,8 @@ export function createWindow(options: WindowOptions): BrowserWindow {
     minWidth: 1100,
     minHeight: 700,
     show: false,
-    title: 'Cartograph',
-    backgroundColor: '#14161a',
+    title: 'Cartograph Atlas',
+    backgroundColor: '#f9f9f6',
     autoHideMenuBar: false,
     webPreferences: {
       preload: path.join(options.distDir, '../preload/index.mjs'),
@@ -34,6 +34,11 @@ export function createWindow(options: WindowOptions): BrowserWindow {
   })
 
   window.once('ready-to-show', () => window.show())
+  if (process.env.CARTOGRAPH_MOCKUP_VERIFY === '1') {
+    window.webContents.once('did-finish-load', () => {
+      console.info('Native renderer ready:', window.getTitle(), window.webContents.getURL())
+    })
+  }
 
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https://')) void shell.openExternal(url)
