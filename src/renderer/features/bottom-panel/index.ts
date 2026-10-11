@@ -1,4 +1,7 @@
 export { ActivityTab } from './ActivityTab'
+export { AgentsTab } from './AgentsTab'
+export { GitTab } from './GitTab'
+export { ValidationTab } from './ValidationTab'
 export { BottomPanel } from './BottomPanel'
 export { ChangesTab } from './ChangesTab'
 export { ResultsTab } from './ResultsTab'

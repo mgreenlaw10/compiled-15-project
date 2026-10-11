@@ -4,6 +4,7 @@
  * Re-exported here so `store.ts` stays a composition root and nothing else.
  */
 
+export { createCollabSlice, syncStatusOf } from './collab'
 export { createDocumentSlice } from './document'
 export { createGenerationSlice } from './generation'
 export { createGraphSlice, describeOperation } from './graph'

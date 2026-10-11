@@ -33,6 +33,11 @@ import '@xyflow/react/dist/style.css'
 
 import { supportedLanguagesSentence } from '../../../shared/languages'
 import { useModulesWithPendingChanges, useStore } from '../../state/store'
+import {
+  useDependencyWarnings,
+  useModuleStates,
+  useMyDeveloperId
+} from '../collab'
 import { ContextMenu, useContextMenu } from './context-menu'
 import {
   EdgeLegend,
@@ -60,6 +65,9 @@ export function GraphCanvas(): JSX.Element {
   const openModule = useStore((s) => s.openModule)
   const selectRelationship = useStore((s) => s.selectRelationship)
   const pending = useModulesWithPendingChanges()
+  const collabStates = useModuleStates()
+  const collabWarnings = useDependencyWarnings()
+  const myDeveloperId = useMyDeveloperId()
 
   const select = useStore((s) => s.select)
   const setPosition = useStore((s) => s.setPosition)
@@ -106,12 +114,25 @@ export function GraphCanvas(): JSX.Element {
         isPending: pending.has(module.id),
         expanded: layout.expanded[module.id] === true,
         onToggleExpand,
-        onDropFile
+        onDropFile,
+        collab: collabStates.get(module.id),
+        collabWarning: collabWarnings.get(module.id),
+        myDeveloperId
       }
     }))
 
     return { nodes: nextNodes, edges: toModuleFlowEdges(graph.edges, selectedModuleId) }
-  }, [graph, layout, selectedModuleId, pending, onToggleExpand, onDropFile])
+  }, [
+    graph,
+    layout,
+    selectedModuleId,
+    pending,
+    onToggleExpand,
+    onDropFile,
+    collabStates,
+    collabWarnings,
+    myDeveloperId
+  ])
 
   // React Flow owns node positions while a drag is in flight, so the canvas is
   // re-seeded from the store whenever the architecture or the layout changes

@@ -42,6 +42,7 @@
 @import '../features/canvas/context-menu/context-menu.css';
 @import '../features/bottom-panel/bottom-panel.css';
 @import '../features/dialogs/dialogs.css';
+@import '../features/collab/collab.css';
 
 /* --- third-party overrides, last so they win ----------------------------- */
 @import './reactflow.css';

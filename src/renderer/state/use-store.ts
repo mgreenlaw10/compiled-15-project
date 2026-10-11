@@ -9,6 +9,7 @@
 import { create } from 'zustand'
 
 import {
+  createCollabSlice,
   createDocumentSlice,
   createGenerationSlice,
   createGraphSlice,
@@ -36,9 +37,16 @@ export const useStore = create<AppState>((...args) => {
     ...createProjectSlice(...args),
     ...createDocumentSlice(...args),
     ...createGenerationSlice(...args),
+    ...createCollabSlice(...args),
 
     async init() {
       window.cartograph.onLog((event) => get().pushLog(event))
+      // Collaboration state is pushed rather than polled from the renderer:
+      // the backend already polls Git, and a second timer here would just
+      // duplicate it.
+      window.cartograph.onCollabChanged((snapshot) =>
+        get().receiveSnapshot(snapshot)
+      )
       await get().loadSettings()
     }
   }

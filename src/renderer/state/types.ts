@@ -56,7 +56,13 @@ import type {
   FileTreeNode,
   ProjectInfo
 } from '../../shared/types/project'
-import type { Actor, Participant } from '../../shared/collab'
+import type { Actor, Participant, Task } from '../../shared/collab'
+import type {
+  CollabSnapshot,
+  CreateTaskRequest,
+  IntegrationReport,
+  WorkspaceStatus
+} from '../../shared/ipc'
 
 export type Busy =
   | 'idle'
@@ -73,13 +79,22 @@ export type Busy =
  */
 export type DialogName =
   | null
+  | 'collab-setup'
+  | 'create-task'
+  | 'integration'
   | 'generate'
   | 'settings'
   | 'add-module'
   | 'diff'
   | 'delete-module'
 
-export type BottomTab = 'activity' | 'changes' | 'results'
+export type BottomTab =
+  | 'activity'
+  | 'changes'
+  | 'results'
+  | 'agents'
+  | 'git'
+  | 'validation'
 
 export interface ProjectSlice {
   project: ProjectInfo | null
@@ -190,6 +205,50 @@ export interface SessionSlice {
   setParticipants(participants: Participant[]): void
 }
 
+/**
+ * Git-backed collaboration.
+ *
+ * A cache of the backend's snapshot plus the actions that change it. Mutations
+ * always go through the backend, never applied optimistically here, so there is
+ * one implementation of the merge rules rather than two that can disagree.
+ */
+export interface CollabSlice {
+  /** `null` when collaboration is not enabled for this project. */
+  collab: CollabSnapshot | null
+  collabWorkspace: WorkspaceStatus | null
+  collabBusy: boolean
+  collabError: string | null
+  selectedTaskId: string | null
+  /** Integration assessments by task id, so a report survives a dialog close. */
+  integrationReports: Record<string, IntegrationReport>
+
+  inspectWorkspace(): Promise<void>
+  initializeCollaboration(remoteUrl?: string): Promise<void>
+  joinCollaboration(): Promise<void>
+  connectCollaboration(): Promise<void>
+  disconnectCollaboration(): Promise<void>
+  /** Applied when the backend pushes a change, rather than on a poll. */
+  receiveSnapshot(snapshot: CollabSnapshot): void
+  syncCollaboration(): Promise<void>
+
+  createTask(
+    request: Omit<CreateTaskRequest, 'graphVersion'>
+  ): Promise<Task | null>
+  claimModule(moduleId: ModuleId, taskId: string): Promise<void>
+  releaseModule(moduleId: ModuleId): Promise<void>
+
+  startAgent(taskId: string): Promise<void>
+  cancelAgent(taskId: string): Promise<void>
+  sendInstruction(sessionId: string, text: string): Promise<void>
+
+  assessIntegration(taskId: string): Promise<IntegrationReport | null>
+  submitIntegration(taskId: string): Promise<IntegrationReport | null>
+  integrateTask(taskId: string): Promise<IntegrationReport | null>
+
+  selectTask(taskId: string | null): void
+  setCollabError(message: string | null): void
+}
+
 export interface LifecycleSlice {
   /** Subscribes to backend logs and loads settings. Called once, on mount. */
   init(): Promise<void>
@@ -206,6 +265,7 @@ export interface AppState
     UiSlice,
     LogSlice,
     SessionSlice,
+    CollabSlice,
     LifecycleSlice {}
 
 /** The slice signature. Every slice sees the whole store through `get`. */

@@ -1,0 +1,204 @@
+/**
+ * Collaboration UI.
+ *
+ * Status colour is the load-bearing element here, and it comes from
+ * `MODULE_STATUS_LABELS` in shared/collab so the node overlay, the inspector
+ * panel and the legend cannot disagree about what "Coding" looks like. Only
+ * the layout lives in this file.
+ */
+
+/* --- the overlay on a graph node -------------------------------------- */
+
+.node-collab {
+  margin-top: 7px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10.5px;
+}
+
+.node-collab-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.node-collab-status {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.node-collab-who {
+  color: var(--text-dim);
+}
+
+.node-collab-agent {
+  padding: 0 4px;
+  border-radius: var(--radius-sm);
+  background: rgba(192, 140, 245, 0.16);
+  color: var(--ai);
+}
+
+.node-collab-task {
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A small, high-contrast marker. Hover gives the explanation. */
+.node-collab-warn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--warn);
+  color: #14161a;
+  font-size: 9.5px;
+  font-weight: 700;
+  cursor: help;
+}
+
+.collab-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+/*
+ * Node borders by status. Only states that mean "somebody is working here" get
+ * one: colouring every node would make the canvas unreadable and tell the user
+ * nothing.
+ */
+.module-node.is-collab-coding,
+.module-node.is-collab-planning,
+.module-node.is-collab-testing {
+  border-color: var(--ai);
+}
+
+.module-node.is-collab-review {
+  border-color: var(--warn);
+}
+
+.module-node.is-collab-conflict {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 1px var(--danger);
+}
+
+.module-node.is-collab-reserved {
+  border-color: var(--accent-dim);
+}
+
+/* Unknown is drawn as absence of confidence, not as a state. */
+.module-node.is-collab-stale {
+  border-style: dashed;
+  border-color: var(--border-strong);
+}
+
+/* --- the inspector panel ---------------------------------------------- */
+
+.collab-panel {
+  padding: 10px 12px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.collab-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.collab-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.collab-activity {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.collab-activity-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 6px;
+  align-items: start;
+  font-size: 11.5px;
+}
+
+/* --- the sidebar sync line -------------------------------------------- */
+
+.sync-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 0 8px;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+.sync-line.is-stale {
+  color: var(--warn);
+}
+
+.sync-line button {
+  margin-left: auto;
+}
+
+.sidebar-section {
+  padding: 0 12px 12px;
+}
+
+/* --- the agents tab --------------------------------------------------- */
+
+.agents-tab {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+  padding: 10px 12px;
+}
+
+.agents-list {
+  overflow: auto;
+  min-height: 0;
+}
+
+.agents-detail {
+  overflow: auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.agents-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.agents-timeline-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 8px;
+  align-items: start;
+  font-size: 11.5px;
+}
+
+.panel-body {
+  padding: 10px 12px;
+  overflow: auto;
+  height: 100%;
+}

@@ -13,6 +13,8 @@ import type { AiConfig } from '../../shared/ai'
 import type { ChannelLogger, Logger } from '../../core/logger'
 import type { CartographService } from '../../core/pipeline'
 import type { SettingsStore } from '../services/settings-store'
+import type { CollabService } from '../services/collab-service'
+import type { ArchitectureGraph } from '../../shared/types/architecture'
 
 /** One cancellable unit of work at a time, matching the single-window UI. */
 export class WorkController {
@@ -49,6 +51,14 @@ export interface HandlerContext {
   work: WorkController
   /** The model configuration for the selected provider, or `null` with no key. */
   getAiConfig: () => Promise<AiConfig | null>
+  /** Git-backed collaboration. One live provider per open project. */
+  collab: CollabService
+  /**
+   * The most recently analyzed graph, or `null`. Collaboration needs it to
+   * brief agents and to explain conflicts architecturally, and the renderer
+   * owns analysis, so the main process caches the last result it produced.
+   */
+  getGraph: () => ArchitectureGraph | null
 }
 
 /** A handler module: channel name -> implementation. */

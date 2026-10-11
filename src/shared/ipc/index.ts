@@ -23,6 +23,7 @@
  * capabilities touch different files.
  */
 
+import type { CollabApi } from './collab'
 import type { DocumentApi } from './document'
 import type { GenerationApi } from './generation'
 import type { ProjectApi } from './project'
@@ -30,6 +31,7 @@ import type { SettingsApi } from './settings'
 import type { SystemApi } from './system'
 
 export * from './channels'
+export * from './collab'
 export * from './commands'
 export * from './document'
 export * from './generation'
@@ -44,4 +46,5 @@ export interface CartographApi
     DocumentApi,
     GenerationApi,
     SettingsApi,
+    CollabApi,
     SystemApi {}

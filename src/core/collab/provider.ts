@@ -40,7 +40,7 @@ import type {
  * against someone else's concurrent work.
  */
 export type CollaborationOperation =
-  | { kind: 'upsert_developer'; developer: Omit<Developer, keyof RevisionFields> }
+  | { kind: 'upsert_developer'; developer: Omit<Developer, RevisionFields> }
   | { kind: 'create_task'; task: NewTask }
   | {
       kind: 'update_task'
@@ -92,11 +92,11 @@ export interface NewTask {
 }
 
 export type SessionPatch = { id: string; taskId: string } & Partial<
-  Omit<AgentSession, 'id' | 'taskId' | keyof RevisionFields>
+  Omit<AgentSession, 'id' | 'taskId' | RevisionFields>
 >
 
 export type IntegrationPatch = { id: string; taskId: string } & Partial<
-  Omit<IntegrationRequest, 'id' | 'taskId' | keyof RevisionFields>
+  Omit<IntegrationRequest, 'id' | 'taskId' | RevisionFields>
 >
 
 /** What one `synchronize()` actually did. Never optimistic. */
