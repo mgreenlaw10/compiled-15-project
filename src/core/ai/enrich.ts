@@ -22,7 +22,7 @@ import { cloneGraph } from '../../shared/graph/model'
 import { importantSymbols } from '../../shared/graph/selectors'
 import type { Logger } from '../logger'
 import { createAiClient, describeApiError } from './client'
-import type { AiConfig } from '../../shared/types/ai'
+import type { AiConfig } from '../../shared/ai'
 
 const RESPONSE_SCHEMA = {
   type: 'object',
@@ -171,7 +171,7 @@ export async function enrichGraphWithAi(
       .join('')
     parsed = JSON.parse(text) as EnrichResponse
   } catch (error) {
-    const message = describeApiError(error)
+    const message = describeApiError(error, client.providerId)
     log.warn('AI enrichment failed; keeping the analyzed descriptions', message)
     return { graph, applied: false, message }
   }

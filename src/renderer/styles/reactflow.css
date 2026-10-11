@@ -1,0 +1,47 @@
+/**
+ * React Flow surface tweaks.
+ *
+ * Overrides for the library's own chrome, kept apart from our own rules so it
+ * is obvious which is which.
+ */
+
+/* React Flow surface tweaks */
+.react-flow__attribution {
+  display: none;
+}
+
+.react-flow__handle {
+  width: 7px;
+  height: 7px;
+  background: var(--border-strong);
+  border: 1px solid var(--bg-panel);
+}
+
+.react-flow__handle:hover {
+  background: var(--accent);
+}
+
+.react-flow__edge-text {
+  font-size: 10px;
+  fill: var(--text-faint);
+}
+
+.react-flow__edge-textbg {
+  fill: var(--bg);
+}
+
+.react-flow__controls button {
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  fill: var(--text-dim);
+}
+
+.react-flow__controls button:hover {
+  background: var(--bg-hover);
+}
+
+.react-flow__minimap {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}

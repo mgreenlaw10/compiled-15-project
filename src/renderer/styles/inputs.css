@@ -1,0 +1,75 @@
+/**
+ * Text inputs, selects, checkboxes, and the field/label/hint layout.
+ */
+
+label.field {
+  display: block;
+  margin-bottom: 12px;
+}
+
+label.field > span.label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 4px;
+}
+
+label.field > span.hint {
+  display: block;
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 4px;
+  line-height: 1.45;
+}
+
+input[type='text'],
+input[type='password'],
+input[type='number'],
+textarea,
+select {
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--bg-input);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font: inherit;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+}
+
+.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.checkbox input {
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+.checkbox .checkbox-text {
+  flex: 1;
+}
+
+.checkbox .checkbox-text small {
+  display: block;
+  color: var(--text-faint);
+}

@@ -1,0 +1,85 @@
+/**
+ * Palette, type scale, and the global resets.
+ *
+ * CSS variables for everything colour-related: a theme change, or an
+ * accessibility pass on contrast, happens here and nowhere else.
+ */
+
+/*
+ * Cartograph's stylesheet.
+ *
+ * One file, CSS variables for the palette, no framework. The brief asks for
+ * clarity over styling, so the rules here are mostly about making a dense
+ * IDE-style layout readable: a fixed grid, consistent spacing, and colour used
+ * to carry meaning (verified vs inferred, pending vs applied) rather than
+ * decoration.
+ */
+
+:root {
+  color-scheme: light;
+  --bg: #f1f2f8;
+  --bg-raised: #f7f7fb;
+  --bg-panel: #ffffff;
+  --bg-input: #ffffff;
+  --bg-hover: #eeedf6;
+  --bg-active: #eeebf8;
+
+  --border: #d8dbea;
+  --border-strong: #c3c7d8;
+
+  --text: #333b57;
+  --text-dim: #666d86;
+  --text-faint: #70768a;
+
+  --accent: #6856a5;
+  --accent-dim: #6856a5;
+  --success: #277650;
+  --warn: #926200;
+  --danger: #b6414c;
+  --ai: #7850a3;
+
+  --radius: 6px;
+  --radius-sm: 4px;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 5px;
+  border: 2px solid var(--bg-panel);
+}

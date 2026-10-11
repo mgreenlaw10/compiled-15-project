@@ -1,125 +1,47 @@
 /**
- * The language analyzer registry.
+ * The language manifest.
  *
- * Static analysis is the only source of *factual* dependency information in
- * Cartograph, so it is kept behind a narrow interface: a language analyzer
- * takes a set of discovered files and returns per-file symbols and imports.
- * Adding Python or Go later means implementing this interface and registering
- * it — nothing downstream (clustering, graph building, the GUI) needs to know
- * which language it came from.
+ * One place that says which languages Cartograph can read. Everything else —
+ * the scanner's idea of a source file, the ignore rules, the per-language file
+ * counts in the status bar, the partitioning of files to analyzers — derives
+ * from here and from `./catalog.ts`.
+ *
+ * ---------------------------------------------------------------------------
+ * Adding a language
+ * ---------------------------------------------------------------------------
+ * 1. Add a descriptor to `LANGUAGES` in `src/shared/languages/catalog.ts`
+ *    (extensions, display name, language tags). It lives in `shared` because
+ *    the renderer reads it too.
+ * 2. Write the analyzer in `./<language>/`, implementing `LanguageAnalyzer`
+ *    from `./types.ts`: given discovered files, return per-file symbols and
+ *    imports. Report facts only — `problems` is for anything that did not
+ *    parse or resolve, and nothing here should guess.
+ * 3. Register it in `createDefaultRegistry` below.
+ *
+ * That is the whole change. In particular you should not need to touch
+ * `../ignore.ts`, `../scan.ts` or `../index.ts`; if you find yourself wanting
+ * to, the seam is in the wrong place and it is worth fixing rather than
+ * working around.
+ *
+ * Two caveats worth knowing before you start, because they are not visible
+ * from this file:
+ *
+ *   - Import *rewriting* (used when files move between modules) is handled by
+ *     `src/core/transform/imports.ts`, which is TypeScript-specific today. A
+ *     new language can be analyzed and drawn without it; moving its files
+ *     between modules needs the equivalent there.
+ *   - `src/core/output/validate.ts` runs `tsc` and `npm test`. Validation for
+ *     another toolchain belongs there.
  */
 
-import type { SourceSymbol } from '../../../shared/types/architecture'
-import type { DiscoveredFile } from '../scan'
+import { LanguageRegistry } from './registry'
+import { TypeScriptAnalyzer } from './typescript'
 
-export interface ImportRecord {
-  /** The specifier exactly as written, e.g. `'../db/client'` or `'react'`. */
-  specifier: string
-  /** Project-relative POSIX path when the import resolves inside the project. */
-  resolvedPath: string | null
-  external: boolean
-  /** Package name for external imports, e.g. `@scope/pkg`. */
-  packageName: string | null
-  /** Imported binding names; `['*']` for namespace imports, `['default']`. */
-  symbols: string[]
-  line: number
-  typeOnly: boolean
-  /** `import()`, `require()`, or a static `import` statement. */
-  style: 'static' | 'dynamic' | 'require' | 're-export'
-}
+export * from '../../../shared/languages'
+export * from './registry'
+export * from './types'
 
-export interface FileAnalysis {
-  /** Project-relative POSIX path. */
-  path: string
-  language: string
-  loc: number
-  symbols: SourceSymbol[]
-  /** Names this file exports. */
-  exportedNames: string[]
-  imports: ImportRecord[]
-  /** Parse or resolution problems, surfaced in the analysis log. */
-  problems: string[]
-}
-
-export interface AnalyzerContext {
-  projectRoot: string
-  /** Every discovered source file, for import resolution. */
-  allFiles: DiscoveredFile[]
-  /** tsconfig `compilerOptions.paths`-style aliases, if any. */
-  pathAliases: Record<string, string[]>
-  baseUrl: string
-  onProgress?: (done: number, total: number, current: string) => void
-}
-
-export interface LanguageAnalyzer {
-  id: string
-  displayName: string
-  /** Extensions this analyzer claims, including the leading dot. */
-  extensions: readonly string[]
-  analyze(
-    files: DiscoveredFile[],
-    context: AnalyzerContext
-  ): Promise<FileAnalysis[]>
-}
-
-export class LanguageRegistry {
-  private readonly analyzers: LanguageAnalyzer[] = []
-
-  register(analyzer: LanguageAnalyzer): this {
-    this.analyzers.push(analyzer)
-    return this
-  }
-
-  /** Groups files by the analyzer that claims their extension. */
-  partition(
-    files: DiscoveredFile[]
-  ): { analyzer: LanguageAnalyzer; files: DiscoveredFile[] }[] {
-    const buckets = new Map<string, DiscoveredFile[]>()
-    const unclaimed: DiscoveredFile[] = []
-
-    for (const file of files) {
-      const analyzer = this.analyzers.find((a) =>
-        a.extensions.some((ext) => file.path.toLowerCase().endsWith(ext))
-      )
-      if (!analyzer) {
-        unclaimed.push(file)
-        continue
-      }
-      const list = buckets.get(analyzer.id) ?? []
-      list.push(file)
-      buckets.set(analyzer.id, list)
-    }
-
-    const result = this.analyzers
-      .filter((a) => (buckets.get(a.id)?.length ?? 0) > 0)
-      .map((a) => ({ analyzer: a, files: buckets.get(a.id)! }))
-
-    if (unclaimed.length > 0) {
-      // Reported by the caller as skipped files rather than silently dropped.
-      result.push({ analyzer: nullAnalyzer, files: unclaimed })
-    }
-    return result
-  }
-
-  get supportedExtensions(): string[] {
-    return this.analyzers.flatMap((a) => [...a.extensions])
-  }
-}
-
-/** Records files no analyzer understands, so the UI can say so out loud. */
-export const nullAnalyzer: LanguageAnalyzer = {
-  id: 'unsupported',
-  displayName: 'Unsupported',
-  extensions: [],
-  async analyze(files) {
-    return files.map((f) => ({
-      path: f.path,
-      language: f.language,
-      loc: f.loc,
-      symbols: [],
-      exportedNames: [],
-      imports: [],
-      problems: [`No analyzer is registered for ${f.path}; treated as an opaque file.`]
-    }))
-  }
+/** The registry the app analyzes with. Register further languages here. */
+export function createDefaultRegistry(): LanguageRegistry {
+  return new LanguageRegistry().register(new TypeScriptAnalyzer())
 }

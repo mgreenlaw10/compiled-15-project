@@ -15,7 +15,7 @@ import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { App } from '../../src/renderer/App'
+import { App } from '../../src/renderer/app/App'
 import { useStore } from '../../src/renderer/state/store'
 import { createLayout } from '../../src/shared/graph/model'
 import { installFakeApi, SAMPLE_PROJECT } from './fake-api'
@@ -35,6 +35,7 @@ function resetStore(): void {
     selectedFile: null,
     selectedOperationId: null,
     deskMode: 'review',
+    focusConnections: false,
     dialog: null,
     addModulePosition: null,
     busy: 'idle',

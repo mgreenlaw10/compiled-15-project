@@ -1,0 +1,50 @@
+/**
+ * Cartograph's stylesheet.
+ *
+ * No framework and no CSS-in-JS: the whole visual vocabulary is these files
+ * plus the components in `../ui`. Colour carries meaning (verified vs
+ * inferred, pending vs applied) rather than decoration, and the palette lives
+ * entirely in `tokens.css`.
+ *
+ * Split by area so two people styling different parts of the app do not edit
+ * the same file. Order matters — tokens first, then shared primitives, then
+ * per-feature rules, then the React Flow overrides last so they win.
+ *
+ * ---------------------------------------------------------------------------
+ * Where to add a rule
+ * ---------------------------------------------------------------------------
+ *   - A colour, radius or font            -> tokens.css
+ *   - The app's grid                      -> layout.css
+ *   - A `../ui` component                 -> buttons / inputs / lists / badges
+ *   - Anything belonging to one feature   -> that feature's own .css, imported
+ *                                            below
+ *
+ * A feature stylesheet lives next to the components it styles, which is what
+ * keeps `features/canvas/canvas.css` and `features/dialogs/dialogs.css` out of
+ * each other's way.
+ */
+
+/* --- foundations --------------------------------------------------------- */
+@import './tokens.css';
+@import './layout.css';
+
+/* --- shared primitives (../ui) ------------------------------------------- */
+@import './buttons.css';
+@import './inputs.css';
+@import './lists.css';
+@import './badges.css';
+@import './misc.css';
+
+/* --- features ------------------------------------------------------------ */
+@import '../features/toolbar/toolbar.css';
+@import '../features/toolbar/status-bar.css';
+@import '../features/canvas/canvas.css';
+@import '../features/canvas/context-menu/context-menu.css';
+@import '../features/bottom-panel/bottom-panel.css';
+@import '../features/dialogs/dialogs.css';
+
+/* --- third-party overrides, last so they win ----------------------------- */
+@import './reactflow.css';
+
+/* Review desk composition and theme overrides. */
+@import './review-desk.css';

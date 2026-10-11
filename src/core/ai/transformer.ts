@@ -2,7 +2,7 @@
  * The AI transformer: the bridge between the transformation engine and the
  * agent.
  *
- * The engine knows nothing about the Anthropic SDK; it only knows the
+ * The engine knows nothing about any model SDK; it only knows the
  * `AiTransformer` interface. This module implements it, which keeps every
  * deterministic code path free of any dependency on a model, a key, or a
  * network — and makes the whole engine testable with a fake transformer.
@@ -20,7 +20,7 @@ import type { OpContext, OpResult } from '../transform/ops/context'
 import type { Logger } from '../logger'
 import { runAgent, type AgentOutcome, type RunAgentOptions } from './agent'
 import { createAiClient, isConfigured } from './client'
-import type { AiConfig } from '../../shared/types/ai'
+import type { AiConfig } from '../../shared/ai'
 import { moveResponsibilityPrompt, scaffoldModulePrompt } from './prompts'
 
 export interface AiTransformerDeps {
@@ -42,7 +42,7 @@ export function createAiTransformer(deps: AiTransformerDeps): AiTransformer {
     available,
     unavailableReason: available
       ? ''
-      : 'Add an Anthropic API key in Settings to enable AI-assisted transformations.',
+      : 'Add a model provider API key in Settings to enable AI-assisted transformations.',
 
     async execute(op: GraphOperation, ctx: OpContext): Promise<OpResult> {
       if (!deps.config || !available) {
@@ -50,7 +50,7 @@ export function createAiTransformer(deps: AiTransformerDeps): AiTransformer {
           status: 'unsupported',
           executor: 'none',
           message:
-            'No Anthropic API key is configured, so this operation was not attempted.',
+            'No model provider API key is configured, so this operation was not attempted.',
           touchedPaths: [],
           warnings: []
         }

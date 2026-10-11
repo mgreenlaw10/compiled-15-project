@@ -1,0 +1,41 @@
+/**
+ * The top toolbar.
+ */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--bg-raised);
+  flex: none;
+}
+
+.toolbar .brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-right: 8px;
+  user-select: none;
+}
+
+.toolbar .brand strong {
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+
+.toolbar .brand span {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.toolbar .spacer {
+  flex: 1;
+}
+
+.divider-v {
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+  margin: 0 4px;
+}

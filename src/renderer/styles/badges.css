@@ -1,0 +1,49 @@
+/**
+ * Badges and chips.
+ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: var(--bg-hover);
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.badge--pending {
+  background: #3a2f12;
+  color: var(--warn);
+}
+.badge--ok {
+  background: #14301f;
+  color: var(--success);
+}
+.badge--danger {
+  background: #341d1d;
+  color: var(--danger);
+}
+.badge--ai {
+  background: #2a1f3a;
+  color: var(--ai);
+}
+.badge--info {
+  background: #17293f;
+  color: var(--accent);
+}
+
+.tag {
+  display: inline-block;
+  padding: 1px 6px;
+  margin: 0 4px 4px 0;
+  border-radius: var(--radius-sm);
+  background: var(--bg-hover);
+  color: var(--text-dim);
+  font-size: 11px;
+}

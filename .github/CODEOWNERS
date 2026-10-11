@@ -1,0 +1,40 @@
+# Code ownership.
+#
+# A template: replace the placeholder handles with real ones. The point is the
+# boundaries, which match the task assignment in ARCHITECTURE.md — if a pull
+# request pulls in a reviewer you did not expect, it is touching someone else's
+# module and is worth a second look.
+
+# --- defaults -------------------------------------------------------------
+*                                           @team-lead
+
+# --- shared contracts: changes here affect everyone -----------------------
+/src/shared/types/architecture.ts           @team-lead
+/src/shared/types/operations.ts             @team-lead
+/src/shared/graph/                          @team-lead
+
+# --- task 1: right-click menus (frontend A) -------------------------------
+/src/renderer/features/canvas/context-menu/ @frontend-a
+/src/renderer/features/dialogs/             @frontend-a
+
+# --- task 2: AI providers / Luminal (backend B) ---------------------------
+/src/shared/ai/                             @backend-b
+/src/core/ai/                               @backend-b
+/src/main/services/settings-store.ts        @backend-b
+/src/main/services/ai-config.ts             @backend-b
+/src/main/ipc/modules/settings.ts           @backend-b
+/src/shared/ipc/settings.ts                 @backend-b
+/src/renderer/features/dialogs/SettingsDialog.tsx @backend-b
+
+# --- task 3: edge colouring (frontend A) ----------------------------------
+/src/renderer/features/canvas/edges/        @frontend-a
+
+# --- task 4: more languages (backend B) -----------------------------------
+/src/shared/languages/                      @backend-b
+/src/core/analyzer/languages/               @backend-b
+
+# --- task 5: concurrent editing (person C) --------------------------------
+/src/shared/collab/                         @person-c
+/src/renderer/features/presence/            @person-c
+/src/renderer/state/slices/session.ts       @person-c
+/src/main/ipc/modules/collab.ts             @person-c
