@@ -7,22 +7,20 @@
  * only when an operation genuinely needs a model, so a user without a key never
  * sees an auth error.
  *
- * `AiClient` is intentionally shaped around the Anthropic SDK's message surface
- * because that is what `agent.ts` and `enrich.ts` drive. A provider that speaks
- * the same wire protocol (most gateways and proxies do) only needs a different
- * `baseURL`; one that does not should adapt itself to this shape inside its own
- * module rather than leaking a second shape into the callers.
+ * A client exposes a `ChatModel` (see `./chat.ts`), which is protocol-neutral.
+ * That is what lets Anthropic's native API and an OpenAI-compatible gateway
+ * both drive the same agent loop: each provider adapts its own wire protocol
+ * inside its own module, and no vendor shape reaches `agent.ts` or `enrich.ts`.
  */
 
-import type Anthropic from '@anthropic-ai/sdk'
-
 import type { AiConfig, Effort } from '../../../shared/ai'
+import type { ChatModel } from './chat'
 
 export interface AiClient {
   /** Which provider produced this client. */
   readonly providerId: string
-  /** The message API. Anthropic-SDK shaped; see the note above. */
-  readonly sdk: Anthropic
+  /** The protocol-neutral message API. */
+  readonly chat: ChatModel
   readonly model: string
   readonly effort: Effort
   readonly maxFileReads: number
@@ -38,7 +36,7 @@ export interface AiProvider {
   readonly id: string
   /** Builds a ready-to-use client. Never called without a key. */
   createClient(config: AiConfig): AiClient
-  /** Turns a vendor SDK error into something worth showing a user. */
+  /** Turns a provider error into something worth showing a user. */
   describeError(error: unknown): string
   /** Sends the smallest possible request, to check a key really works. */
   testApiKey(config: AiConfig): Promise<ApiKeyTest>

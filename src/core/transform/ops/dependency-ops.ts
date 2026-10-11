@@ -49,7 +49,13 @@ export function executeRemoveDependency(
   const from = findModule(ctx.graph, op.from)
   const to = findModule(ctx.graph, op.to)
   const label = `${from?.name ?? op.from} -> ${to?.name ?? op.to}`
-  const edge = findEdge(ctx.graph, op.from, op.to)
+  const edge = ctx.graph.edges.find((e) => e.from === op.from && e.to === op.to && (!op.kind || e.kind === op.kind))
+
+  if (edge && edge.kind !== 'imports' && edge.evidence.some((e) => e.relationshipId)) {
+    return unsupported(`Removing this ${edge.kind} dependency requires changing the exact source relationship, not just deleting the arrow.`, {
+      breakingChanges: edge.evidence.map((e) => `${e.fromFile}:${e.line} depends on ${e.specifier}`)
+    })
+  }
 
   if (!edge || !edge.verified || edge.evidence.length === 0) {
     return metadataOnly(

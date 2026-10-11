@@ -15,19 +15,25 @@
  * dialog renders from the catalog — so no caller, test or UI file needs
  * touching.
  *
- * If a provider does not speak the Anthropic message protocol, adapt it to the
- * `AiClient` shape *inside its own module*. Everything downstream
- * (`agent.ts`, `enrich.ts`) is written against that shape, and keeping the
- * adaptation local is what makes a second provider a one-file change.
+ * Providers adapt their own wire protocol to the `ChatModel` interface in
+ * `./chat.ts` *inside their own module*. `agent.ts` and `enrich.ts` are
+ * written against that interface and name no vendor, which is what keeps a
+ * second provider local to this directory.
+ *
+ * For an OpenAI-compatible endpoint there is almost nothing to write:
+ * `./openai-compatible.ts` is the transport, and `./luminal.ts` shows the
+ * whole of what a provider then needs (a base URL, a model, error wording).
  */
 
 import { DEFAULT_PROVIDER_ID } from '../../../shared/ai'
 import { anthropicProvider } from './anthropic'
+import { luminalProvider } from './luminal'
 import type { AiProvider } from './types'
 
+export * from './chat'
 export * from './types'
 
-const PROVIDERS: readonly AiProvider[] = [anthropicProvider]
+const PROVIDERS: readonly AiProvider[] = [anthropicProvider, luminalProvider]
 
 export function findAiProvider(id: string): AiProvider | null {
   return PROVIDERS.find((p) => p.id === id) ?? null

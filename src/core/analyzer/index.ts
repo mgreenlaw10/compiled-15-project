@@ -27,6 +27,9 @@ import {
 } from './languages'
 import { parseTsConfigPaths } from './resolve'
 import { readProjectInfo, scanProject } from './scan'
+import { analyzeProgram } from './program-analysis'
+import { refineSemanticClusters } from './semantic-cluster'
+import { attachProgram } from './program-graph'
 
 export { ANALYZER_VERSION } from './build-graph'
 export { createDefaultRegistry } from './languages'
@@ -143,12 +146,14 @@ export async function analyzeProject(
       (unresolved > 0 ? `; ${unresolved} import(s) did not resolve` : '')
   )
 
-  const clustered = clusterFiles(analyses, project.name, {
+  const program = await analyzeProgram(scan.files, analyses, { projectRoot: root, allFiles: scan.files, pathAliases, baseUrl })
+  throwIfAborted(options.signal)
+  const clustered = refineSemanticClusters(clusterFiles(analyses, project.name, {
     sourceRoots: scan.sourceRoots
-  })
+  }), program, analyses)
   log.info(`Grouped files into ${clustered.modules.length} module(s)`)
 
-  const graph = buildGraph({
+  const graph = attachProgram(buildGraph({
     projectRoot: root,
     projectName: project.name,
     analyses,
@@ -165,7 +170,7 @@ export async function analyzeProject(
       message: `Skipped ${s.path}: ${s.reason}`,
       file: s.path
     }))
-  })
+  }), program)
 
   const layout = createLayout(layoutGraph(graph))
 

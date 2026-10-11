@@ -36,6 +36,9 @@
 
 import { LanguageRegistry } from './registry'
 import { TypeScriptAnalyzer } from './typescript'
+import { PythonAnalyzer } from './python'
+import { JavaAnalyzer } from './java'
+import { CppAnalyzer } from './cpp'
 
 export * from '../../../shared/languages'
 export * from './registry'
@@ -43,5 +46,9 @@ export * from './types'
 
 /** The registry the app analyzes with. Register further languages here. */
 export function createDefaultRegistry(): LanguageRegistry {
-  return new LanguageRegistry().register(new TypeScriptAnalyzer())
+  return new LanguageRegistry()
+    .register(new TypeScriptAnalyzer())
+    .register(new PythonAnalyzer())
+    .register(new JavaAnalyzer())
+    .register(new CppAnalyzer())
 }

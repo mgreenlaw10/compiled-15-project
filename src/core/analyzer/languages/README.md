@@ -8,15 +8,19 @@ facts an analyzer reports and never asks which language produced them.
 
 | File | What it is |
 | --- | --- |
-| `catalog.ts` | Extensions and language tags. The scanner and `../ignore.ts` read this. |
+| `../../../shared/languages/catalog.ts` | Extensions and language tags. The scanner and `../ignore.ts` read this. |
 | `types.ts` | The `LanguageAnalyzer` contract and the `FileAnalysis` / `ImportRecord` shapes. |
 | `registry.ts` | Partitions discovered files to the analyzer that claims them. |
 | `index.ts` | The manifest: `createDefaultRegistry()`. |
 | `typescript/` | The reference analyzer, built on ts-morph. |
+| `tree-sitter.ts` | Shared WASM parser lifecycle, syntax diagnostics, and symbol helpers. |
+| `python.ts` | Python declarations, literal `__all__`, package and relative imports. |
+| `java.ts` | Java types, package/type indexing, imports and same-package type references. |
+| `cpp.ts` | C/C++ declarations and includes, with compilation database search paths. |
 
 ## Adding a language
 
-1. **Catalog** — add a `LanguageDescriptor` to `LANGUAGES` in `catalog.ts`:
+1. **Catalog** — add a `LanguageDescriptor` to `LANGUAGES` in `src/shared/languages/catalog.ts`:
    its extensions, display name, and any finer-grained variant tags.
 2. **Analyzer** — create `./<language>/` with a class implementing
    `LanguageAnalyzer` from `types.ts`. It receives every discovered file of its
@@ -24,9 +28,11 @@ facts an analyzer reports and never asks which language produced them.
    returns one `FileAnalysis` per file.
 3. **Register** — add it to `createDefaultRegistry()` in `index.ts`.
 
-Nothing outside this directory should need to change. If you find yourself
-wanting to edit `../ignore.ts`, `../scan.ts` or `../index.ts`, the seam is in
-the wrong place — worth fixing rather than working around.
+Scanning, ignore rules and module import edges use the language registry.
+Detailed symbol extraction additionally lives in `../program-analysis.ts`:
+register the language's grammar and declaration/reference rules there to supply
+the hierarchical source model. Preserve source ranges, uncertainty and scope;
+do not turn unresolved bindings into factual edges.
 
 ## The contract, in short
 
@@ -49,4 +55,8 @@ language can be analyzed and drawn without them.
 
 - **Import rewriting**, used when files move between modules, lives in
   `src/core/transform/imports.ts` and is TypeScript-specific today.
-- **Validation** (`tsc`, `npm test`) lives in `src/core/output/validate.ts`.
+- **Fine edits** live in `src/core/transform/ops/program-ops.ts`; complex edits
+  use the existing AI transformer and still require validation.
+- **Validation** (`tsc`, `npm test`, `javac`, GCC/G++, configured tests and
+  contract checks) lives in `src/core/output/validate.ts` and
+  `src/core/output/program-validation.ts`.

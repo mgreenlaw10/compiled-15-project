@@ -38,20 +38,27 @@ import {
   EdgeLegend,
   NODE_COLOR,
   PENDING_NODE_COLOR,
-  toFlowEdge
+  toModuleFlowEdges,
+  underlyingDependencies,
+  DependencyDetailEdge
 } from './edges'
 import {
   ModuleNodeView,
   type FileDragPayload,
   type ModuleNodeData
 } from './ModuleNodeView'
+import { ProgramCanvas } from './ProgramCanvas'
 
 const nodeTypes = { module: ModuleNodeView }
+const edgeTypes = { dependencyDetail: DependencyDetailEdge }
 
 export function GraphCanvas(): JSX.Element {
   const graph = useStore((s) => s.desired)
   const layout = useStore((s) => s.layout)
   const selectedModuleId = useStore((s) => s.selectedModuleId)
+  const viewScope = useStore((s) => s.viewScope)
+  const openModule = useStore((s) => s.openModule)
+  const selectRelationship = useStore((s) => s.selectRelationship)
   const pending = useModulesWithPendingChanges()
 
   const select = useStore((s) => s.select)
@@ -103,7 +110,7 @@ export function GraphCanvas(): JSX.Element {
       }
     }))
 
-    return { nodes: nextNodes, edges: graph.edges.map(toFlowEdge) }
+    return { nodes: nextNodes, edges: toModuleFlowEdges(graph.edges, selectedModuleId) }
   }, [graph, layout, selectedModuleId, pending, onToggleExpand, onDropFile])
 
   // React Flow owns node positions while a drag is in flight, so the canvas is
@@ -140,10 +147,13 @@ export function GraphCanvas(): JSX.Element {
   const onEdgesDelete = useCallback(
     (deleted: Edge[]) => {
       for (const edge of deleted) {
+        const dependency = useStore.getState().desired?.edges.find((candidate) => candidate.id === edge.id)
+        if (!dependency) continue
         dispatchOperation({
           type: 'remove_dependency',
           from: edge.source,
-          to: edge.target
+          to: edge.target,
+          kind: dependency.kind
         })
       }
     },
@@ -166,16 +176,26 @@ export function GraphCanvas(): JSX.Element {
     )
   }
 
+  const scopedModule = graph.modules.find((m) => m.id === viewScope?.moduleId)
+  if (scopedModule) return <ProgramCanvas module={scopedModule} file={viewScope?.file} />
   return (
     <div className="canvas-wrap">
       <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeDragStop={onNodeDragStop}
         onNodeClick={(_event, node) => select(node.id)}
+        onNodeDoubleClick={(_event, node) => openModule(node.id)}
+        onEdgeClick={(_event, edge) => {
+          const dependency = underlyingDependencies(graph.edges, edge.id)[0]
+          if (!dependency) return
+          if (!selectedModuleId || ![dependency.from, dependency.to].includes(selectedModuleId)) select(dependency.from)
+          selectRelationship(dependency.id)
+        }}
         onPaneClick={() => select(null)}
         onConnect={onConnect}
         onEdgesDelete={onEdgesDelete}
@@ -214,7 +234,7 @@ export function GraphCanvas(): JSX.Element {
         </div>
       ) : null}
 
-      <EdgeLegend />
+      <EdgeLegend detailed={selectedModuleId !== null} />
 
       {menu.target ? (
         <ContextMenu target={menu.target} onClose={menu.close} />

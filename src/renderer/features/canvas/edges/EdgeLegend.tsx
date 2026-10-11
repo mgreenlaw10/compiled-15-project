@@ -8,6 +8,7 @@
  */
 
 import { EDGE_LEGEND, type LegendEntry } from './edge-style'
+import { OVERVIEW_EDGE_COLOR } from './module-edges'
 
 /** Legend entries for things that are not edges. */
 const NODE_LEGEND: readonly LegendEntry[] = [
@@ -23,15 +24,16 @@ function Swatch({ entry }: { entry: LegendEntry }): JSX.Element {
   )
 }
 
-export function EdgeLegend(): JSX.Element {
+export function EdgeLegend({ detailed = false }: { detailed?: boolean }): JSX.Element {
   return (
     <div className="canvas-legend">
-      {[...EDGE_LEGEND, ...NODE_LEGEND].map((entry) => (
+      {[{ label: 'module dependency', color: OVERVIEW_EDGE_COLOR }, ...(detailed ? EDGE_LEGEND : [{ label: 'potential / user declared', color: OVERVIEW_EDGE_COLOR, dash: '5 4' }]), ...NODE_LEGEND].map((entry) => (
         <div key={`${entry.label}:${entry.color}`}>
           <Swatch entry={entry} />
           {entry.label}
         </div>
       ))}
+      <p>{detailed ? 'Click the canvas to collapse details.' : 'Select a module to show dependency details.'}</p>
     </div>
   )
 }

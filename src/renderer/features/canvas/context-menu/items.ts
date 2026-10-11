@@ -18,6 +18,7 @@
 
 import { useStore } from '../../../state/store'
 import type { MenuItem } from './types'
+import { isOverviewEdge } from '../edges/module-edges'
 
 export const CANVAS_MENU_ITEMS: readonly MenuItem[] = [
   {
@@ -73,6 +74,8 @@ export const CANVAS_MENU_ITEMS: readonly MenuItem[] = [
     label: 'Remove dependency',
     appliesTo: ['edge'],
     danger: true,
+    disabled: ({ target }) => target.kind === 'edge' && isOverviewEdge(target.edgeId) ?
+      'Select a module to show and remove individual dependencies.' : false,
     run: ({ state, target }) => {
       if (target.kind !== 'edge') return
       const edge = state.desired?.edges.find((e) => e.id === target.edgeId)
@@ -80,7 +83,8 @@ export const CANVAS_MENU_ITEMS: readonly MenuItem[] = [
       state.dispatchOperation({
         type: 'remove_dependency',
         from: edge.from,
-        to: edge.to
+        to: edge.to,
+        kind: edge.kind
       })
     }
   }

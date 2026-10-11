@@ -88,6 +88,9 @@ export function diffArchitectures(
   for (const after of desired.modules) {
     const before = findModule(original, after.id)
     if (!before) continue
+    if (before.components.implementation.desiredDescription !== after.components.implementation.desiredDescription) {
+      operations.push({ type: 'update_implementation', moduleId: after.id, description: after.components.implementation.desiredDescription ?? '' })
+    }
 
     if (before.name !== after.name || before.directory !== after.directory) {
       renamedModules.push({ id: after.id, from: before.name, to: after.name })
@@ -183,15 +186,57 @@ export function diffArchitectures(
     })
   }
 
+  for (const symbol of desired.program.symbols) {
+    const before = original.program.symbols.find((s) => s.id === symbol.id)
+    const owner = desired.modules.find((m) => m.files.includes(symbol.source.file))
+    if (!owner) continue
+    if (!before) operations.push({ type: 'add_symbol', moduleId: owner.id, symbol })
+    else {
+      const changes: Extract<GraphOperationBody, { type: 'update_symbol' }>['changes'] = {}
+      for (const key of ['name', 'signature', 'parameters', 'returnType', 'accessibility', 'description', 'fields'] as const) {
+        if (JSON.stringify(before[key]) !== JSON.stringify(symbol[key])) Object.assign(changes, { [key]: symbol[key] })
+      }
+      if (Object.keys(changes).length) operations.push({ type: 'update_symbol', moduleId: owner.id, symbolId: symbol.id, changes })
+    }
+  }
+  for (const symbol of original.program.symbols.filter((s) => !desired.program.symbols.some((d) => d.id === s.id))) {
+    const owner = original.modules.find((m) => m.files.includes(symbol.source.file))
+    if (owner && desiredIds.has(owner.id)) operations.push({ type: 'remove_symbol', moduleId: owner.id, symbolId: symbol.id })
+  }
+  for (const contract of desired.program.contracts) {
+    const before = original.program.contracts.find((c) => c.id === contract.id)
+    const moduleId = contract.moduleId
+    if (!moduleId) continue
+    if (!before) operations.push({ type: 'add_contract', moduleId, contract })
+    else {
+      const changes: Extract<GraphOperationBody, { type: 'modify_contract' }>['changes'] = {}
+      for (const key of ['category', 'description', 'expression', 'symbolId', 'fieldId'] as const) {
+        if (JSON.stringify(before[key]) !== JSON.stringify(contract[key])) Object.assign(changes, { [key]: contract[key] })
+      }
+      if (Object.keys(changes).length) operations.push({ type: 'modify_contract', moduleId, contractId: contract.id, changes })
+    }
+  }
+  for (const contract of original.program.contracts.filter((c) => !desired.program.contracts.some((d) => d.id === c.id))) {
+    if (contract.moduleId && desiredIds.has(contract.moduleId)) operations.push({ type: 'remove_contract', moduleId: contract.moduleId, contractId: contract.id })
+  }
+  for (const relation of desired.program.relationships.filter((r) => r.origin === 'user' && r.kind === 'contract' && r.contractId &&
+    !original.program.relationships.some((before) => before.id === r.id))) {
+    const symbol = desired.program.symbols.find((s) => s.id === relation.fromSymbolId)
+    const module = desired.modules.find((m) => symbol && m.files.includes(symbol.source.file))
+    if (module) operations.push({ type: 'add_contract_dependency', moduleId: module.id, fromSymbolId: relation.fromSymbolId, contractId: relation.contractId! })
+  }
+
   // Dependencies.
-  const beforeEdges = new Map(original.edges.map((e) => [`${e.from}>${e.to}`, e]))
-  const afterEdges = new Map(desired.edges.map((e) => [`${e.from}>${e.to}`, e]))
+  const beforeEdges = new Map(original.edges.map((e) => [`${e.from}>${e.to}:${e.kind}`, e]))
+  const afterEdges = new Map(desired.edges.map((e) => [`${e.from}>${e.to}:${e.kind}`, e]))
   const addedDependencies: ArchitectureDiff['addedDependencies'] = []
   const removedDependencies: ArchitectureDiff['removedDependencies'] = []
 
   for (const [key, edge] of afterEdges) {
     if (!beforeEdges.has(key)) {
       addedDependencies.push({ from: edge.from, to: edge.to })
+      if (edge.kind === 'contracts' && edge.evidence.every((e) => e.relationshipId && desired.program.relationships.some((r) =>
+        r.id === e.relationshipId && r.origin === 'user' && r.kind === 'contract'))) continue
       operations.push({
         type: 'add_dependency',
         from: edge.from,
@@ -212,7 +257,8 @@ export function diffArchitectures(
       operations.push({
         type: 'remove_dependency',
         from: edge.from,
-        to: edge.to
+        to: edge.to,
+        kind: edge.kind
       })
     }
   }
@@ -254,5 +300,7 @@ export function summarizeDiff(diff: ArchitectureDiff): string {
     parts.push(`-${diff.removedDependencies.length} dependency`)
   if (diff.changedMetadata.length)
     parts.push(`${diff.changedMetadata.length} edited`)
+  const fineEdits = diff.operations.filter((op) => ['update_symbol', 'add_symbol', 'remove_symbol', 'update_implementation', 'add_contract', 'modify_contract', 'remove_contract', 'add_contract_dependency'].includes(op.type)).length
+  if (fineEdits) parts.push(`${fineEdits} component change${fineEdits === 1 ? '' : 's'}`)
   return parts.join(', ')
 }

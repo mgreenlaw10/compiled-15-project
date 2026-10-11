@@ -17,7 +17,7 @@
  */
 
 import { z } from 'zod'
-import type Anthropic from '@anthropic-ai/sdk'
+import type { ChatTool } from './providers/chat'
 
 import type { ArchitectureGraph } from '../../shared/types/architecture'
 import type { GraphOperation } from '../../shared/types/operations'
@@ -172,8 +172,14 @@ const DESCRIPTIONS: Record<ToolName, string> = {
     'Finish the task. Call this exactly once, at the end, and be honest about what you did not manage to do.'
 }
 
-/** The tool definitions sent with every request. */
-export function toolDefinitions(): Anthropic.Tool[] {
+/**
+ * The tool definitions sent with every request.
+ *
+ * Provider-neutral: each provider translates these into its own wire format,
+ * and whether inputs stream eagerly is the provider's concern. Inputs are
+ * re-validated in `runTool` regardless of what the server did or did not check.
+ */
+export function toolDefinitions(): ChatTool[] {
   return (Object.keys(SCHEMAS) as ToolName[]).map((name) => {
     const schema = z.toJSONSchema(SCHEMAS[name], { target: 'draft-7' }) as Record<
       string,
@@ -183,10 +189,7 @@ export function toolDefinitions(): Anthropic.Tool[] {
     return {
       name,
       description: DESCRIPTIONS[name],
-      input_schema: schema as Anthropic.Tool.InputSchema,
-      // Large tool inputs (whole file contents) stream as they are generated.
-      // The client then owns validation — see `runTool`.
-      eager_input_streaming: true
+      inputSchema: schema
     }
   })
 }

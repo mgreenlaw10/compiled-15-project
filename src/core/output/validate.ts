@@ -25,6 +25,7 @@ import type {
 import { toPosix } from '../../shared/util/paths'
 import type { Logger } from '../logger'
 import { silentLogger } from '../logger'
+import { validateProgram } from './program-validation'
 
 const DEFAULT_TIMEOUT_MS = 180_000
 const MAX_OUTPUT_CHARS = 20_000
@@ -347,6 +348,7 @@ export async function validateProject(
     })
   }
 
+  checks.push(...await validateProgram(root, runCommand, timeoutMs, options.runTests !== false, options.signal))
   const ran = checks.filter((c) => c.status !== 'skipped')
   const failures = ran.filter((c) => c.status !== 'passed')
   const passed = ran.length > 0 && failures.length === 0

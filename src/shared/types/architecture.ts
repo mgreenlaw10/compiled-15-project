@@ -18,6 +18,7 @@
  */
 
 /** Stable identifier for a module. Stable across renames, saves, and reloads. */
+import type { ModuleComponents, ProgramModel } from './program'
 export type ModuleId = string
 
 /** Stable identifier for a dependency edge. */
@@ -113,9 +114,10 @@ export interface ModuleNode {
   metadata: ModuleMetadata
   /** Bumped whenever this module is changed by an operation. */
   version: number
+  components: ModuleComponents
 }
 
-export type DependencyKind = 'imports' | 'depends_on' | 'calls'
+export type DependencyKind = 'imports' | 'depends_on' | 'calls' | 'types' | 'fields' | 'contracts'
 
 /** A concrete import that justifies a module-level edge. */
 export interface DependencyEvidence {
@@ -128,6 +130,11 @@ export interface DependencyEvidence {
   /** Imported binding names; `['*']` for namespace imports. */
   symbols: string[]
   line: number
+  relationshipId?: string
+  fromSymbolId?: string
+  toSymbolId?: string
+  contractId?: string
+  resolution?: 'resolved' | 'potential' | 'unresolved'
 }
 
 export interface DependencyEdge {
@@ -186,6 +193,7 @@ export interface ArchitectureGraph {
   /** Monotonic counter bumped by every applied operation. */
   version: number
   analysis: AnalysisSummary
+  program: ProgramModel
 }
 
 export interface NodePosition {
@@ -206,5 +214,5 @@ export interface GraphLayout {
   version: number
 }
 
-export const ARCHITECTURE_SCHEMA_VERSION = 1
+export const ARCHITECTURE_SCHEMA_VERSION = 2
 export const LAYOUT_SCHEMA_VERSION = 1

@@ -18,6 +18,7 @@ import {
   type ArchitectureDocument
 } from '../../shared/types/project'
 import { ARCHITECTURE_SCHEMA_VERSION } from '../../shared/types/architecture'
+import { migrateGraph } from '../../shared/graph/program'
 
 export function documentPath(projectRoot: string): string {
   return path.join(projectRoot, CARTOGRAPH_DIR, DOCUMENT_FILENAME)
@@ -58,8 +59,8 @@ export async function loadDocument(
     )
   }
   if (
-    parsed.original?.schemaVersion !== ARCHITECTURE_SCHEMA_VERSION ||
-    parsed.desired?.schemaVersion !== ARCHITECTURE_SCHEMA_VERSION
+    ![1, ARCHITECTURE_SCHEMA_VERSION].includes(parsed.original?.schemaVersion) ||
+    ![1, ARCHITECTURE_SCHEMA_VERSION].includes(parsed.desired?.schemaVersion)
   ) {
     throw new Error(
       `${file} holds an architecture in an unsupported format (expected schema ${ARCHITECTURE_SCHEMA_VERSION}).`
@@ -68,6 +69,8 @@ export async function loadDocument(
   if (!Array.isArray(parsed.operations) || !parsed.desired.modules) {
     throw new Error(`${file} is missing required fields.`)
   }
+  parsed.original = migrateGraph(parsed.original)
+  parsed.desired = migrateGraph(parsed.desired)
 
   // The project may have been moved or cloned elsewhere since it was saved.
   const normalizedRoot = path.resolve(projectRoot)

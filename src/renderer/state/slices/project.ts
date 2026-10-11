@@ -86,6 +86,9 @@ Continue?`
         appliedOperationIds: [],
         selectedModuleId: result.graph.modules[0]?.id ?? null,
         selectedFile: null,
+        viewScope: null,
+        selectedSymbolId: null,
+        selectedRelationshipId: null,
         dirty: false,
         busy: 'idle'
       })

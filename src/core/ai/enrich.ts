@@ -22,6 +22,7 @@ import { cloneGraph } from '../../shared/graph/model'
 import { importantSymbols } from '../../shared/graph/selectors'
 import type { Logger } from '../logger'
 import { createAiClient, describeApiError } from './client'
+import { parseJsonObject, textOf } from './providers/chat'
 import type { AiConfig } from '../../shared/ai'
 
 const RESPONSE_SCHEMA = {
@@ -56,7 +57,12 @@ const RESPONSE_SCHEMA = {
             type: 'string',
             description:
               'Optional: a concrete suggestion about the module boundary, e.g. which files look like they belong elsewhere. Omit it when the boundary looks right.'
-          }
+          },
+          implementationDescription: { type: 'string', description: 'Explain existing implementation using the supplied actual source excerpts; distinguish uncertainty.' },
+          inferredContracts: { type: 'array', items: { type: 'object', additionalProperties: false,
+            required: ['symbolId', 'category', 'description'], properties: { symbolId: { type: 'string' },
+              category: { type: 'string', enum: ['precondition', 'postcondition', 'invariant', 'side_effect', 'error_behavior', 'ordering', 'concurrency', 'idempotency', 'performance', 'ownership', 'lifecycle'] },
+              description: { type: 'string' } } } }
         }
       }
     }
@@ -70,15 +76,18 @@ interface EnrichResponse {
     responsibilities: string[]
     confidence: number
     boundaryNote?: string
+    implementationDescription?: string
+    inferredContracts?: { symbolId: string; category: import('../../shared/types/program').ContractCategory; description: string }[]
   }[]
 }
 
 const SYSTEM = `You describe software architecture.
 
-You are given the modules of a real TypeScript/JavaScript project, extracted by static analysis: each module's id, its directory, its files, its exported symbols, and which modules it imports from. Your job is to describe what each module is *for*.
+You are given modules of a real codebase, extracted by static analysis, with source excerpts. Describe their purpose and how the existing implementation works. Optional behavioral contracts are hypotheses only, never proven guarantees.
 
 Rules:
-- Describe only what the evidence supports. The file names, symbol names and dependency directions are all you have; do not invent features, frameworks or behaviour you cannot see.
+- Describe only what the supplied source excerpts and relationships support. Do not invent features, frameworks or behavior you cannot see. If excerpts are incomplete, state that limitation.
+- Inferred contracts are unverified hypotheses; do not use language implying formal proof. Only use symbol IDs supplied for that module.
 - Write for a developer new to the codebase. Plain, specific language, no filler, no marketing tone.
 - Responsibilities are short phrases ("Hash and verify passwords"), not sentences, and should not simply restate the module name.
 - Set confidence honestly. A directory holding several unrelated things deserves a low score and a boundaryNote saying what looks misplaced.
@@ -109,6 +118,8 @@ function graphDigest(graph: ArchitectureGraph): string {
           .map((e) => e.to)
           .join(', ') || '(nothing)'
       }`,
+      `  source-grounded components: ${JSON.stringify(m.components)}`,
+      `  source excerpts: ${graph.program.symbols.filter((s) => m.files.includes(s.source.file)).slice(0, 12).map((s) => `${s.id} ${s.qualifiedName}\n${s.sourceText.slice(0, 1200)}`).join('\n').slice(0, 7000)}`,
       ''
     )
   }
@@ -134,29 +145,22 @@ export async function enrichGraphWithAi(
 
   let parsed: EnrichResponse
   try {
-    const stream = client.sdk.messages.stream(
-      {
-        model: client.model,
-        max_tokens: 16_000,
-        system: SYSTEM,
-        output_config: {
-          effort: client.effort,
-          format: { type: 'json_schema', schema: RESPONSE_SCHEMA as unknown as Record<string, unknown> }
-        },
-        messages: [{ role: 'user', content: graphDigest(graph) }]
-      },
-      options.signal ? { signal: options.signal } : undefined
-    )
-    const message = await stream.finalMessage()
+    const response = await client.chat.complete({
+      system: SYSTEM,
+      messages: [{ role: 'user', content: graphDigest(graph) }],
+      maxTokens: 16_000,
+      responseSchema: RESPONSE_SCHEMA as unknown as Record<string, unknown>,
+      ...(options.signal ? { signal: options.signal } : {})
+    })
 
-    if (message.stop_reason === 'refusal') {
+    if (response.stopReason === 'refusal') {
       return {
         graph,
         applied: false,
         message: 'The model declined to describe this project; the graph is unchanged.'
       }
     }
-    if (message.stop_reason === 'max_tokens') {
+    if (response.stopReason === 'max_tokens') {
       return {
         graph,
         applied: false,
@@ -165,11 +169,19 @@ export async function enrichGraphWithAi(
       }
     }
 
-    const text = message.content
-      .filter((b) => b.type === 'text')
-      .map((b) => b.text)
-      .join('')
-    parsed = JSON.parse(text) as EnrichResponse
+    // Only providers advertising `jsonMode: 'schema'` guarantee the shape, so
+    // the text is parsed leniently and a miss is reported rather than thrown:
+    // enrichment is a bonus and must never fail an analysis.
+    const found = parseJsonObject<EnrichResponse>(textOf(response))
+    if (!found) {
+      log.warn('The model did not return usable JSON; keeping the analyzed descriptions')
+      return {
+        graph,
+        applied: false,
+        message: 'The model did not return a usable description response.'
+      }
+    }
+    parsed = found
   } catch (error) {
     const message = describeApiError(error, client.providerId)
     log.warn('AI enrichment failed; keeping the analyzed descriptions', message)
@@ -189,6 +201,20 @@ export async function enrichGraphWithAi(
     }
     if (typeof suggestion.description === 'string' && suggestion.description.trim() !== '') {
       target.description = suggestion.description.trim()
+    }
+    if (typeof suggestion.implementationDescription === 'string' && suggestion.implementationDescription.trim()) {
+      target.components.implementation.observedDescription = suggestion.implementationDescription.trim()
+      target.components.implementation.descriptionOrigin = 'ai'
+    }
+    for (const [index, contract] of (suggestion.inferredContracts ?? []).entries()) {
+      const symbol = next.program.symbols.find((s) => s.id === contract.symbolId && target.files.includes(s.source.file))
+      if (!symbol || !contract.description?.trim()) continue
+      const id = `inferred:${symbol.id}:${index}`
+      if (next.program.contracts.some((c) => c.id === id)) continue
+      next.program.contracts.push({ id, moduleId: target.id, symbolId: symbol.id, category: contract.category,
+        description: contract.description, provenance: 'inferred', verification: 'unverified',
+        verificationNote: 'AI-inferred hypothesis based on source excerpts; no formal verification performed.', evidence: [symbol.source], version: 1 })
+      target.components.contracts.contractIds.push(id)
     }
     if (Array.isArray(suggestion.responsibilities) && suggestion.responsibilities.length > 0) {
       target.responsibilities = suggestion.responsibilities

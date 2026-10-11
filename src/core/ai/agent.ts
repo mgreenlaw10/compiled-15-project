@@ -1,22 +1,31 @@
 /**
  * The agent loop.
  *
- * A hand-written loop rather than the SDK's tool runner, because every turn has
+ * A hand-written loop rather than any SDK's tool runner, because every turn has
  * to be reported to the GUI's activity panel, the loop has to be cancellable
  * mid-task, and the tools need the virtual workspace threaded through them.
  *
- * Requests stream (tool inputs here include whole file contents, which is
- * exactly the case streaming exists for), thinking is adaptive, and because
- * eager input streaming means the server stops validating tool inputs, every
- * input is re-validated client-side in `runTool` before it runs.
+ * It is written against the protocol-neutral `ChatModel` in
+ * `./providers/chat.ts` and names no vendor, so one loop drives Anthropic's
+ * native API and any OpenAI-compatible endpoint alike. Provider-specific
+ * behaviour — prompt caching, thinking, refusal fallbacks, tool-call
+ * translation — belongs in the provider module, not here.
+ *
+ * Tool inputs are re-validated client-side in `runTool` before anything runs:
+ * providers that stream tool inputs eagerly stop validating them server-side,
+ * and an OpenAI-compatible gateway never validated them in the first place.
  */
-
-import type Anthropic from '@anthropic-ai/sdk'
-import { APIError } from '@anthropic-ai/sdk'
 
 import type { GraphOperation } from '../../shared/types/operations'
 import type { ChannelLogger } from '../logger'
 import { describeApiError, type AiClient } from './client'
+import {
+  textOf,
+  toolUsesOf,
+  type ChatMessage,
+  type ChatResponse,
+  type ChatToolResult
+} from './providers/chat'
 import { SYSTEM_PROMPT } from './prompts'
 import {
   createToolRunState,
@@ -29,10 +38,8 @@ import {
 /** Stops a runaway loop. Each turn is one model call plus its tool calls. */
 const MAX_TURNS = 30
 const MAX_TOKENS = 64_000
-const MAX_JSON_RETRIES = 2
-
-/** Server-side refusal fallbacks: routes by refusal category automatically. */
-const FALLBACK_BETA = 'server-side-fallback-2026-07-01'
+/** Transient transport failures worth re-issuing the turn for. */
+const MAX_CALL_RETRIES = 2
 
 export interface AgentOutcome {
   /** What the model said it achieved, via `report_result`. */
@@ -53,21 +60,6 @@ export interface RunAgentOptions {
   signal?: AbortSignal
 }
 
-function textOf(message: Anthropic.Beta.BetaMessage): string {
-  return message.content
-    .filter((block): block is Anthropic.Beta.BetaTextBlock => block.type === 'text')
-    .map((block) => block.text)
-    .join('')
-    .trim()
-}
-
-/** `true` when the API rejected the request because of the fallbacks beta. */
-function isFallbackRejection(error: unknown): boolean {
-  if (!(error instanceof APIError) || error.status !== 400) return false
-  const message = error.message.toLowerCase()
-  return message.includes('fallback') || message.includes('beta')
-}
-
 export async function runAgent(options: RunAgentOptions): Promise<AgentOutcome> {
   const { client, log, operation } = options
   const tools = toolDefinitions()
@@ -78,17 +70,18 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentOutcome> 
     maxFileReads: client.maxFileReads
   }
 
-  const messages: Anthropic.Beta.BetaMessageParam[] = [
-    { role: 'user', content: options.task }
-  ]
+  const messages: ChatMessage[] = [{ role: 'user', content: options.task }]
 
   let turns = 0
-  let jsonRetries = 0
-  let useFallbacks = true
+  let retries = 0
   let stoppedBecause: string | null = null
   const usage = { inputTokens: 0, outputTokens: 0 }
 
-  log.info(`Starting ${client.model} at effort "${client.effort}"`)
+  log.info(
+    client.chat.capabilities.effort
+      ? `Starting ${client.model} at effort "${client.effort}"`
+      : `Starting ${client.model}`
+  )
 
   while (turns < MAX_TURNS) {
     if (options.signal?.aborted) {
@@ -97,48 +90,34 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentOutcome> 
     }
     turns += 1
 
-    let message: Anthropic.Beta.BetaMessage
+    let response: ChatResponse
     try {
-      const stream = client.sdk.beta.messages.stream({
-        model: client.model,
-        max_tokens: MAX_TOKENS,
-        system: [
-          {
-            type: 'text',
-            text: SYSTEM_PROMPT,
-            // The system prompt and tool list are identical every turn, so the
-            // whole prefix is cached and only the growing tail is re-read.
-            cache_control: { type: 'ephemeral' }
-          }
-        ],
-        thinking: { type: 'adaptive', display: 'summarized' },
-        output_config: { effort: client.effort },
-        tools,
+      response = await client.chat.complete({
+        system: SYSTEM_PROMPT,
         messages,
-        ...(useFallbacks
-          ? { betas: [FALLBACK_BETA], fallbacks: 'default' as const }
-          : {})
+        tools,
+        maxTokens: MAX_TOKENS,
+        ...(options.signal ? { signal: options.signal } : {}),
+        // Only streaming providers call this; the rest log the turn's text
+        // once it arrives, below.
+        onText: client.chat.capabilities.streaming
+          ? (delta) => {
+              if (delta.trim() !== '') log.debug(delta.trim())
+            }
+          : undefined
       })
-
-      stream.on('text', (delta) => {
-        if (delta.trim() !== '') log.debug(delta.trim())
-      })
-
-      message = await stream.finalMessage()
-      jsonRetries = 0
+      retries = 0
     } catch (error) {
-      if (useFallbacks && isFallbackRejection(error)) {
-        // The deployment does not accept the fallbacks beta; carry on without
-        // it rather than failing the user's refactor over a resilience extra.
-        log.debug('Server-side refusal fallbacks are unavailable here; continuing without them.')
-        useFallbacks = false
-        turns -= 1
-        continue
+      if (options.signal?.aborted) {
+        stoppedBecause = 'Canceled by the user.'
+        break
       }
-      if (!(error instanceof APIError) && jsonRetries < MAX_JSON_RETRIES) {
-        // A tool input that could not be parsed at all: re-issue the turn.
-        jsonRetries += 1
-        log.warn('A tool call arrived unparseable; asking the model to repeat the turn.')
+      if (retries < MAX_CALL_RETRIES) {
+        retries += 1
+        log.warn(
+          `The model call failed; retrying (${retries}/${MAX_CALL_RETRIES})`,
+          (error as Error).message
+        )
         turns -= 1
         continue
       }
@@ -147,52 +126,48 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentOutcome> 
       break
     }
 
-    usage.inputTokens += message.usage.input_tokens
-    usage.outputTokens += message.usage.output_tokens
+    usage.inputTokens += response.usage.inputTokens
+    usage.outputTokens += response.usage.outputTokens
 
-    for (const block of message.content) {
+    for (const block of response.content) {
       if (block.type === 'thinking' && block.thinking.trim() !== '') {
         log.debug(`thinking: ${block.thinking.trim()}`)
       }
     }
-    const said = textOf(message)
+    const said = textOf(response)
     if (said !== '') log.info(said)
 
-    if (message.stop_reason === 'refusal') {
+    if (response.stopReason === 'refusal') {
       stoppedBecause = `The model declined this request${
-        message.stop_details && 'category' in message.stop_details
-          ? ` (${String(message.stop_details.category)})`
-          : ''
+        response.refusalCategory ? ` (${response.refusalCategory})` : ''
       }. No tools from that turn were run.`
       log.warn(stoppedBecause)
       break
     }
 
-    if (message.stop_reason === 'max_tokens') {
+    if (response.stopReason === 'max_tokens') {
       stoppedBecause =
         'The model hit its output limit mid-turn, so the turn was discarded rather than half-applied.'
       log.warn(stoppedBecause)
       break
     }
 
-    if (message.stop_reason === 'pause_turn') {
-      messages.push({ role: 'assistant', content: message.content })
+    if (response.stopReason === 'pause_turn') {
+      messages.push({ role: 'assistant', content: response.content })
       continue
     }
 
-    const toolUses = message.content.filter(
-      (block): block is Anthropic.Beta.BetaToolUseBlock => block.type === 'tool_use'
-    )
+    const toolUses = toolUsesOf(response)
 
     if (toolUses.length === 0) {
-      // `end_turn` with no tool call: the model is done talking but never
-      // reported. Ask once, then give up rather than looping.
+      // The model is done talking but never reported. Ask once, then give up
+      // rather than looping.
       if (state.finalReport) break
       if (turns >= MAX_TURNS - 1) {
         stoppedBecause = 'The model stopped without calling report_result.'
         break
       }
-      messages.push({ role: 'assistant', content: message.content })
+      messages.push({ role: 'assistant', content: response.content })
       messages.push({
         role: 'user',
         content:
@@ -201,9 +176,9 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentOutcome> 
       continue
     }
 
-    messages.push({ role: 'assistant', content: message.content })
+    messages.push({ role: 'assistant', content: response.content })
 
-    const results: Anthropic.Beta.BetaToolResultBlockParam[] = []
+    const results: ChatToolResult[] = []
     for (const use of toolUses) {
       log.debug(`tool: ${use.name}`)
       let outcome: Awaited<ReturnType<typeof runTool>>
@@ -217,15 +192,14 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentOutcome> 
       }
       if (outcome.isError) log.warn(`${use.name}: ${outcome.content}`)
       results.push({
-        type: 'tool_result',
-        tool_use_id: use.id,
+        toolUseId: use.id,
         content: outcome.content,
-        is_error: outcome.isError
+        isError: outcome.isError
       })
     }
 
-    // All results for one assistant turn go back in a single user message.
-    messages.push({ role: 'user', content: results })
+    // All results for one assistant turn go back together.
+    messages.push({ role: 'tool_results', results })
 
     if (state.finalReport) break
   }

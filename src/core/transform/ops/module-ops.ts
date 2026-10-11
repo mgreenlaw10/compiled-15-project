@@ -86,6 +86,11 @@ export function executeAddModule(
   const target = findModule(ctx.nextGraph, op.module.id)
   if (!target) return failed(`Module ${op.module.id} is not in the graph`)
 
+  const languages = Object.keys(ctx.graph.analysis.languages)
+  if (languages.length && !languages.some((language) => language.startsWith('typescript') || language.startsWith('javascript'))) {
+    return metadataOnly(`Created "${op.module.name}" as a pending architectural component. Choose its source files and interface before generating a language-specific implementation.`)
+  }
+
   if (!op.module.directory) {
     return metadataOnly(
       `Created "${op.module.name}" in the graph only: it has no directory, so there is nothing to write. Give it a directory to generate source files.`

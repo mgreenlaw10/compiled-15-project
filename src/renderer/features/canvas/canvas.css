@@ -157,3 +157,34 @@
 .canvas-legend .swatch.dashed {
   border-top-style: dashed;
 }
+.canvas-legend p { margin: 6px 0 0; color: var(--text-faint); font-size: 10px; }
+.dependency-edge-label {
+  position: absolute;
+  pointer-events: none;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: var(--bg-panel);
+  color: var(--text-dim);
+  font-size: 10px;
+}
+.program-breadcrumbs {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: var(--bg, #171b23);
+  border: 1px solid var(--border, #343b47);
+  border-radius: 6px;
+}
+.program-hint { position: absolute; bottom: 12px; left: 64px; padding: 7px; color: var(--text-dim); background: #171b23; font-size: 11px; }
+.program-card { margin: 8px 0; padding: 8px; border: 1px solid var(--border, #343b47); border-radius: 5px; }
+.program-card summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: 6px; }
+.program-signature { font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.program-parameter, .program-field { border-left: 2px solid #4d6a94; padding-left: 7px; margin-bottom: 6px; }
+.program-evidence { margin-top: 10px; border-left: 2px solid #c08cf5; padding-left: 8px; }
+.program-source { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; max-height: 360px; overflow: auto; }

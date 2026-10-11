@@ -54,6 +54,7 @@ export function useModulesWithPendingChanges(): Set<ModuleId> {
           ids.add(op.toModuleId)
           break
         default:
+          if ('moduleId' in op) ids.add(op.moduleId)
           break
       }
     }

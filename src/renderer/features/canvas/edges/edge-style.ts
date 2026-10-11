@@ -46,13 +46,16 @@ export interface EdgeStyle {
 export const EDGE_STYLES: Record<DependencyKind, EdgeStyle> = {
   imports: { color: '#4d6a94', label: 'verified import' },
   calls: { color: '#c08cf5', label: 'call' },
+  types: { color: '#5fc6ae', label: 'type dependency' },
+  fields: { color: '#e3ac67', label: 'field / shared state' },
+  contracts: { color: '#e482a7', label: 'contract reliance' },
   depends_on: { color: '#4d6a94', label: 'verified import' }
 }
 
 /** How an edge the analyzer could not verify in the source is drawn. */
 export const UNVERIFIED_STYLE: EdgeStyle = {
   color: '#8b93a3',
-  label: 'declared, no import yet',
+  label: 'potential / user declared',
   dash: '5 4'
 }
 
@@ -63,7 +66,7 @@ const FALLBACK_STYLE: EdgeStyle = {
 
 /** The resolved appearance of one edge. */
 export function edgeAppearance(edge: DependencyEdge): EdgeStyle {
-  if (!edge.verified) return UNVERIFIED_STYLE
+  if (!edge.verified) return { ...(EDGE_STYLES[edge.kind] ?? UNVERIFIED_STYLE), dash: UNVERIFIED_STYLE.dash }
   return EDGE_STYLES[edge.kind] ?? FALLBACK_STYLE
 }
 
@@ -78,7 +81,7 @@ export function edgeColor(edge: DependencyEdge): string {
  * wall of text, so only the things a user cannot infer from the line get one.
  */
 export function edgeLabel(edge: DependencyEdge): string | undefined {
-  if (!edge.verified) return `${edge.kind} (declared)`
+  if (!edge.verified) return `${edge.kind} (${edge.origin === 'user' ? 'declared' : 'potential'})`
   if (edge.kind !== 'imports') return edge.kind
   return edge.weight > 1 ? `×${edge.weight}` : undefined
 }

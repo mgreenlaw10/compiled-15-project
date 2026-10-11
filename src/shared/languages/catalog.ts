@@ -47,7 +47,13 @@ export const LANGUAGES: readonly LanguageDescriptor[] = [
       { suffix: '.cjs', language: 'javascript' }
     ],
     language: 'typescript'
-  }
+  },
+  { id: 'python', displayName: 'Python', extensions: ['.py', '.pyi'], language: 'python' },
+  { id: 'java', displayName: 'Java', extensions: ['.java'], language: 'java' },
+  { id: 'c-cpp', displayName: 'C / C++',
+    extensions: ['.c', '.h', '.cc', '.cpp', '.cxx', '.c++', '.hh', '.hpp', '.hxx', '.h++', '.ipp', '.tpp'],
+    variants: [{ suffix: '.c', language: 'c' }, { suffix: '.h', language: 'c' }],
+    language: 'cpp' }
 ]
 
 /** The language tag used for files no descriptor claims. */

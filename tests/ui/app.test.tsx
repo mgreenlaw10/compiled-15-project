@@ -129,7 +129,7 @@ describe('the application shell', () => {
     // The inspector shows the source mapping and the public interface.
     expect(await screen.findByDisplayValue('Auth')).toBeTruthy()
     expect(screen.getByDisplayValue('src/auth')).toBeTruthy()
-    expect(screen.getByText('src/auth/session.ts')).toBeTruthy()
+    expect(screen.getByText('src/auth/session.ts', { selector: '.row-title' })).toBeTruthy()
     // Listed both as part of the public interface and as a declaration.
     expect(screen.getAllByText('createSession').length).toBeGreaterThan(1)
 

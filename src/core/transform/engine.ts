@@ -21,7 +21,7 @@
 import type { ArchitectureGraph } from '../../shared/types/architecture'
 import type { ChangeSet, OperationOutcome } from '../../shared/types/generation'
 import type { GraphOperation } from '../../shared/types/operations'
-import { applyOperation } from '../../shared/graph/apply-operation'
+import { applyOperation, projectedMoveTarget } from '../../shared/graph/apply-operation'
 import { diffArchitectures } from '../../shared/graph/diff'
 import { findModule } from '../../shared/graph/model'
 import { requiresAi } from '../../shared/types/operations'
@@ -46,6 +46,9 @@ import {
   type OpResult
 } from './ops/context'
 import { VirtualWorkspace } from './workspace'
+import { executeProgramOperation } from './ops/program-ops'
+import { analyzeImpact } from '../../shared/graph/impact'
+import { refreshProgramAnchors } from './program-anchors'
 
 /**
  * The hook the AI agent plugs into. Keeping it an interface means the engine
@@ -92,16 +95,46 @@ async function runOperation(
   ctx: OpContext,
   ai: AiTransformer | null
 ): Promise<OpResult> {
+  const languageMove = async (): Promise<OpResult> => ai?.available ? ai.execute(op, ctx) :
+    unsupported('Moving these files requires language-specific import/include and ownership changes. Enable AI assistance, or refactor the source and reanalyze.')
+  const isJsTs = (file: string): boolean => /\.[cm]?[jt]sx?$/i.test(file)
   switch (op.type) {
+    case 'update_symbol': case 'remove_symbol': case 'add_contract': case 'modify_contract': case 'remove_contract':
+    case 'add_contract_dependency': {
+      const result = executeProgramOperation(op, ctx)
+      if ((result.status === 'unsupported' || result.status === 'partial') && ai?.available && op.type !== 'add_contract_dependency') {
+        const assisted = await ai.execute(op, ctx)
+        return { ...assisted, touchedPaths: [...new Set([...result.touchedPaths, ...assisted.touchedPaths])],
+          warnings: [...result.warnings, ...assisted.warnings],
+          status: result.touchedPaths.length && assisted.status === 'unsupported' ? 'partial' : assisted.status }
+      }
+      return result
+    }
+    case 'add_symbol': case 'update_implementation':
+      if (ai?.available) return ai.execute(op, ctx)
+      return unsupported(`This operation needs an AI model to implement the requested behavior. ${ai?.unavailableReason ?? 'No model provider API key is configured.'}`)
     case 'add_module':
       return executeAddModule(op, ctx)
     case 'rename_module':
+      if (op.directory && op.directory !== findModule(ctx.graph, op.moduleId)?.directory &&
+        findModule(ctx.graph, op.moduleId)?.files.some((file) => !isJsTs(file))) return languageMove()
       return executeRenameModule(op, ctx)
-    case 'move_file':
+    case 'move_file': {
+      const destination = findModule(ctx.nextGraph, op.toModuleId)
+      if (!isJsTs(op.file) && destination && projectedMoveTarget(op.file, destination, op.toPath) !== op.file) return languageMove()
       return executeMoveFile(op, ctx)
-    case 'delete_module':
+    }
+    case 'delete_module': {
+      const destination = op.reassignTo ? findModule(ctx.nextGraph, op.reassignTo) : undefined
+      if (op.fileDisposition === 'reassign' && destination && findModule(ctx.graph, op.moduleId)?.files.some((file) =>
+        !isJsTs(file) && projectedMoveTarget(file, destination) !== file)) return languageMove()
       return executeDeleteModule(op, ctx)
+    }
     case 'move_symbol':
+      if (!/\.[cm]?[jt]sx?$/i.test(op.fromFile)) {
+        if (ai?.available) return ai.execute(op, ctx)
+        return unsupported('Moving this scoped symbol requires language-specific caller and ownership changes. Enable AI assistance, or refactor the source and reanalyze.')
+      }
       return executeMoveSymbol(op, ctx)
     case 'add_dependency':
       return executeAddDependency(op, ctx)
@@ -174,6 +207,8 @@ export async function planChanges(
     }
 
     const label = OPERATION_LABELS[op.type]
+    breakingChanges.push(...analyzeImpact(startingGraph, op).map((impact) =>
+      `${startingGraph.modules.find((m) => m.id === impact.moduleId)?.name ?? impact.moduleId}: ${impact.reason}`))
     const reduced = applyOperation(current, op)
     if (!reduced.ok) {
       log.error(`${label}: ${reduced.error}`)
@@ -210,6 +245,13 @@ export async function planChanges(
     // The graph only advances when the operation did not fail outright, so a
     // failure cannot silently shift the architecture out from under later ops.
     if (result.status !== 'failed') current = reduced.graph
+    if (['applied', 'partial'].includes(result.status) && result.touchedPaths.length && current.program.symbols.length) {
+      try { current = await refreshProgramAnchors(current, workspace) }
+      catch (error) {
+        result.status = 'partial'
+        result.warnings.push(`Could not refresh source bindings after this edit: ${(error as Error).message}. Reanalyze before applying further component edits.`)
+      }
+    }
 
     for (const warning of result.warnings) log.warn(`${label}: ${warning}`)
     breakingChanges.push(...(result.breakingChanges ?? []))

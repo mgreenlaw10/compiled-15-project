@@ -1,0 +1,3 @@
+{
+  "cTestSources": ["implementation/account.c", "payments/payment.c", "tests/contract_test.c"]
+}

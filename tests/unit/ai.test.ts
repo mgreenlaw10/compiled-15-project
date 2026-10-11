@@ -156,9 +156,9 @@ describe('tool definitions', () => {
 
     for (const tool of tools) {
       expect(tool.description).toBeTruthy()
-      // Large inputs (whole file contents) stream as they are generated.
-      expect(tool.eager_input_streaming).toBe(true)
-      const schema = tool.input_schema as Record<string, unknown>
+      // Provider-neutral: eager input streaming is the Anthropic provider's
+      // concern, not the definition's.
+      const schema = tool.inputSchema
       expect(schema.type).toBe('object')
       expect(schema.additionalProperties).toBe(false)
       expect(schema).not.toHaveProperty('$schema')

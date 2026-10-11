@@ -38,7 +38,7 @@ Every one of these is a registry or manifest. Adding to it is additive.
 | To add… | Edit | Then |
 | --- | --- | --- |
 | A **language** | `shared/languages/catalog.ts` | new `core/analyzer/languages/<lang>/`, register in that dir's `index.ts` |
-| An **AI provider** | `shared/ai/providers.ts` | new `core/ai/providers/<name>.ts`, register in `providers/index.ts` |
+| An **AI provider** | `shared/ai/providers.ts` | new `core/ai/providers/<name>.ts` (copy `luminal.ts` if OpenAI-compatible), register in `providers/index.ts` |
 | An **IPC capability** | `shared/ipc/channels.ts` + a `shared/ipc/<domain>.ts` | new `main/ipc/modules/<domain>.ts` + `preload/bridges/<domain>.ts` |
 | A **dialog** | `renderer/state/types.ts` (`DialogName`) | new `renderer/features/dialogs/<X>Dialog.tsx`, register in `dialogs/registry.ts` |
 | A **context-menu item** | — | `renderer/features/canvas/context-menu/items.ts` |
@@ -72,28 +72,38 @@ Owns `renderer/features/canvas/context-menu/`.
 
 See `features/canvas/context-menu/README.md`.
 
-### 2 · Luminal API key support — **backend B**
+### 2 · AI providers — **backend B** · Luminal is **done**
 
 Owns `shared/ai/`, `core/ai/providers/`, `features/dialogs/SettingsDialog.tsx`.
 
-The provider layer was generalised for this, so the work is:
+**Luminal is implemented and tested** (DeepSeek V4.1 Flash through its
+OpenAI-compatible Flash endpoint). What that required, and what it leaves
+behind for the next provider:
 
-1. A descriptor in `shared/ai/providers.ts` — display name, models, default
-   model, key placeholder, console URL, env var.
-2. `core/ai/providers/luminal.ts` exporting an `AiProvider`
-   (`createClient` / `describeError` / `testApiKey`).
-3. One line in `core/ai/providers/index.ts`.
+- `core/ai/providers/chat.ts` is now a **protocol-neutral** `ChatModel`
+  interface. `agent.ts` and `enrich.ts` are written against it and name no
+  vendor; the Anthropic SDK is imported in exactly one file.
+- `core/ai/providers/openai-compatible.ts` is a reusable transport for any
+  OpenAI-style `/chat/completions` endpoint.
+- `core/ai/providers/luminal.ts` is therefore ~40 lines of configuration.
 
-Keys are already stored **per provider** (`settings.apiKeys[providerId]`,
-encrypted via `safeStorage`, with a schema-1 migration and an `envVar`
-fallback), and the settings dialog renders the whole catalog from the
-descriptors. So `settings-store.ts`, `main/ipc/modules/settings.ts`,
-`shared/ipc/settings.ts` and `SettingsDialog.tsx` should need no changes.
+So adding another provider is:
 
-If Luminal does not speak the Anthropic message protocol, adapt it to the
-`AiClient` shape **inside `luminal.ts`**. `core/ai/agent.ts` and `enrich.ts`
-are written against that shape; keeping the adaptation local is what makes this
-a one-file change.
+1. A descriptor in `shared/ai/providers.ts`.
+2. A module in `core/ai/providers/` — copy `luminal.ts` if the endpoint is
+   OpenAI-compatible, otherwise implement `ChatModel` directly.
+3. One line in `PROVIDERS` in `core/ai/providers/index.ts`.
+
+Keys are stored **per provider** (`settings.apiKeys[providerId]`, encrypted via
+`safeStorage`, with a schema-1 migration and an `envVar` fallback), and the
+settings dialog renders the catalog from the descriptors. So `settings-store.ts`,
+`main/ipc/modules/settings.ts`, `shared/ipc/settings.ts` and `SettingsDialog.tsx`
+need no changes.
+
+Read `core/ai/providers/README.md` before adding one — it covers
+`ChatCapabilities` (how a provider declares what it genuinely does, instead of
+callers assuming) and the two rules that are easy to get wrong: reasoning is
+never replayed, and tool inputs are always re-validated locally.
 
 ### 3 · Colour-code arrows — **frontend A or C**
 
@@ -171,7 +181,7 @@ For reference, the hotspots this split removed:
 | `renderer/components/GraphCanvas.tsx`, tasks 1 and 3 | canvas + `edges/` + `context-menu/`, each self-contained |
 | `main/ipc/handlers.ts`, 357 lines, tasks 2 and 5 | 5 handler modules + a 95-line registrar |
 | `shared/types/ipc.ts`, tasks 2 and 5 | 7 domain files assembled into `CartographApi` |
-| `core/ai/client.ts` hardcoded to Anthropic, task 2 | a provider registry; `client.ts` names no vendor |
+| `core/ai/client.ts` hardcoded to Anthropic, task 2 | a provider registry behind a protocol-neutral `ChatModel`; the Anthropic SDK is imported in one file |
 | `analyzer/ignore.ts` hardcoding extensions, task 4 | derived from `shared/languages/catalog.ts` |
 
 ## Verifying

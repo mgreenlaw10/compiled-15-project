@@ -53,6 +53,19 @@ export const AI_PROVIDERS: readonly AiProviderDescriptor[] = [
     consoleUrl: 'https://console.anthropic.com/settings/keys',
     envVar: 'ANTHROPIC_API_KEY',
     available: true
+  },
+  {
+    id: 'luminal',
+    displayName: 'Luminal',
+    summary:
+      'DeepSeek V4.1 Flash through Luminal’s OpenAI-compatible Flash endpoint. Get a key from dash.luminal.com.',
+    models: ['deepseek-ai/DeepSeek-V4.1-Flash'],
+    defaultModel: 'deepseek-ai/DeepSeek-V4.1-Flash',
+    defaultEffort: 'high',
+    keyPlaceholder: 'your Luminal API key',
+    consoleUrl: 'https://dash.luminal.com',
+    envVar: 'LUMINAL_API_KEY',
+    available: true
   }
 ]
 

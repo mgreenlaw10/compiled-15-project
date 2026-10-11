@@ -25,7 +25,7 @@ import type { ModuleDraft } from './cluster'
 import type { FileAnalysis } from './languages'
 import { normalizeResponsibilities, responsibilityFromSymbol, roleOf } from './lexicon'
 
-export const ANALYZER_VERSION = '1.0.0'
+export const ANALYZER_VERSION = '2.0.0'
 
 /** Caps how many symbols a module carries, to keep saved documents sane. */
 const MAX_SYMBOLS_PER_MODULE = 60

@@ -15,6 +15,8 @@ import { dependenciesOf, dependentsOf, importantSymbols } from '../../../shared/
 import { useModulesWithPendingChanges, useStore } from '../../state/store'
 import { Badge, Empty, SectionTitle, plural } from '../../ui'
 import { FILE_DRAG_MIME, type FileDragPayload } from '../canvas/ModuleNodeView'
+import { ProgramInspector } from './ProgramInspector'
+import { NodeInspector } from './NodeInspector'
 
 function MoveTarget({
   modules,
@@ -53,6 +55,7 @@ export function Inspector(): JSX.Element {
   const original = useStore((s) => s.original)
   const selectedId = useStore((s) => s.selectedModuleId)
   const selectedFile = useStore((s) => s.selectedFile)
+  const selectedSymbolId = useStore((s) => s.selectedSymbolId)
   const dispatchOperation = useStore((s) => s.dispatchOperation)
   const openDialog = useStore((s) => s.openDialog)
   const settings = useStore((s) => s.settings)
@@ -99,6 +102,8 @@ export function Inspector(): JSX.Element {
       </aside>
     )
   }
+
+  if (selectedSymbolId || selectedFile) return <NodeInspector module={module} />
 
   const before = original?.modules.find((m) => m.id === module.id)
   const deps = dependenciesOf(graph, module.id)
@@ -204,6 +209,7 @@ export function Inspector(): JSX.Element {
           </span>
         </label>
 
+        <SectionTitle>Overall Description</SectionTitle>
         <label className="field">
           <span className="label">Description</span>
           <textarea
@@ -231,6 +237,7 @@ export function Inspector(): JSX.Element {
           <span className="hint">One per line.</span>
         </label>
 
+        <ProgramInspector key={module.id} module={module} />
         {module.responsibilities.length > 0 ? (
           <>
             <SectionTitle>Move a responsibility</SectionTitle>
@@ -449,7 +456,8 @@ export function Inspector(): JSX.Element {
                     dispatchOperation({
                       type: 'remove_dependency',
                       from: module.id,
-                      to: target.id
+                      to: target.id,
+                      kind: edge.kind
                     })
                   }
                 >

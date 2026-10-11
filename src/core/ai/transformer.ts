@@ -68,6 +68,18 @@ export function createAiTransformer(deps: AiTransformerDeps): AiTransformer {
       } else if (op.type === 'scaffold_module') {
         task = scaffoldModulePrompt(op, ctx.nextGraph)
         log.info(`Generating an implementation for module ${op.moduleId}`)
+      } else if (['update_symbol', 'add_symbol', 'remove_symbol', 'move_symbol', 'move_file', 'rename_module', 'delete_module', 'update_implementation', 'add_contract', 'modify_contract', 'remove_contract'].includes(op.type)) {
+        const moduleIds = new Set(['moduleId' in op ? op.moduleId : '', 'fromModuleId' in op ? op.fromModuleId : '', 'toModuleId' in op ? op.toModuleId : '', 'reassignTo' in op ? op.reassignTo : ''])
+        task = [
+          'Implement this structured program edit using the actual source files. Make targeted changes and adapt affected callers.',
+          JSON.stringify(op, null, 2),
+          'Observed symbols and contracts:', JSON.stringify(ctx.graph.program, null, 2),
+          'Desired module components and file ownership:', JSON.stringify(ctx.nextGraph.modules.filter((m) => moduleIds.has(m.id)), null, 2),
+          'Desired symbol definitions:', JSON.stringify(ctx.nextGraph.program.symbols.filter((s) => 'symbolId' in op && s.id === op.symbolId), null, 2),
+          'A contract edit requests a behavioral implementation change, not just a comment change. Add or update focused tests where feasible.',
+          'Never claim behavioral compatibility because code compiles. Report unverified guarantees and unresolved consumers.',
+          'Do not modify unrelated modules. Use read_file before write_file. Return partial or unsupported if requirements cannot be established.'
+        ].join('\n')
       } else {
         return {
           status: 'unsupported',
@@ -95,6 +107,9 @@ export function createAiTransformer(deps: AiTransformerDeps): AiTransformer {
 
       const touched = outcome.touchedPaths
       const warnings = [...(outcome.report?.warnings ?? [])]
+      if (['add_contract', 'modify_contract', 'remove_contract', 'update_implementation'].includes(op.type)) {
+        warnings.push('AI-generated behavior is unverified until the project checks and relevant contract tests have run; compilation is not a proof.')
+      }
 
       if (!outcome.report) {
         return {

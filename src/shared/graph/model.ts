@@ -19,6 +19,7 @@ import {
   type Provenance
 } from '../types/architecture'
 import { edgeId } from '../util/id'
+import { emptyComponents, emptyProgram } from './program'
 
 export function emptyAnalysisSummary(): AnalysisSummary {
   return {
@@ -71,7 +72,8 @@ export function createModule(init: {
       owner: null,
       lockedBy: null
     },
-    version: 1
+    version: 1,
+    components: emptyComponents()
   }
 }
 
@@ -115,7 +117,8 @@ export function createGraph(init: {
     edges: init.edges ?? [],
     unassignedFiles: init.unassignedFiles ?? [],
     version: 1,
-    analysis: init.analysis ?? emptyAnalysisSummary()
+    analysis: init.analysis ?? emptyAnalysisSummary(),
+    program: emptyProgram()
   }
 }
 

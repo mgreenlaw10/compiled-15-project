@@ -1,8 +1,10 @@
 # Cartograph
 
-**An AI-powered visual codebase editor.** Import an existing TypeScript or
-JavaScript project, see its architecture as an editable module graph, change the
-graph, and regenerate the source code to match.
+**An AI-powered visual codebase editor.** Import a TypeScript, JavaScript,
+Python, Java, or C/C++ codebase and see its architecture as a module graph.
+Open modules and files to inspect source symbols, types, calls and behavioral
+contracts. Edit individual components, preview generated source changes, and
+run the available project checks.
 
 The whole point of the tool is the round trip:
 
@@ -59,7 +61,7 @@ Other scripts:
 | `npm run dev` | Dev server + Electron, with hot reload |
 | `npm run build` | Type check, then bundle main / preload / renderer into `out/` |
 | `npm start` | Run the built app |
-| `npm test` | The whole test suite (116 tests) |
+| `npm test` | The whole test suite |
 | `npm run typecheck` | Type check all three TypeScript projects |
 | `npm run smoke` | Boot the built app and fail if the renderer logs an error |
 | `npm run verify` | typecheck → test → build → smoke |
@@ -81,9 +83,9 @@ fresh checkout with no install step.
 
    Cartograph scans it, parses it with ts-morph, and in about 130 ms groups its
    19 source files into 8 modules: `Entry Point → Api → Auth → Db → Utils`,
-   plus `Payments`, `Types` and `Test`. Twenty dependency edges, every one of
-   them backed by a real import statement. Select a module and the inspector
-   will tell you which file, on which line, imports what.
+   plus `Payments`, `Types` and `Test`. Import edges and additional call, type,
+   field and contract relationships retain source evidence. Select an arrow
+   to inspect the symbols and assumptions responsible for the connection.
 
 2. **Notice the problem.** Select **Auth**. It owns five files, and one of them
    is `src/auth/session.ts` — session creation, expiry, revocation and purging.
@@ -217,6 +219,36 @@ back up with a change set.
 | `move_responsibility` | **AI required** | Needs an API key. The agent reads the code, works out which declarations implement the responsibility, and relocates them using the deterministic tools. Without a key it is reported `unsupported`, not quietly dropped. |
 | `scaffold_module` | **AI required** | Asks the model to implement a module from its description, responsibilities and declared interface, using the project's existing types and helpers. |
 
+The directory/import operations above use the existing JS/TS refactoring tools.
+Creating an empty module in a Python/Java/C/C++ project records architectural
+intent; it does not insert a TypeScript scaffold. Physical file moves in those
+languages require AI assistance to update imports/includes and ownership.
+The hierarchical program model adds:
+
+| Operation | Source transformation |
+|---|---|
+| `update_symbol` | Compiler-aware JS/TS callable renames; anchored Java/Python/C/C++ callable renames with known callers and matching C declarations. Signature edits are partial until callers and implementations are adapted. Ambiguous or stale bindings are refused. |
+| `add_symbol`, fields/type edits | Targeted AI implementation using the existing virtual workspace, or an explicit unsupported outcome without a configured model. |
+| `remove_symbol` | Anchored removal when no known dependents exist; otherwise targeted AI work is required. |
+| `move_symbol` with a scoped identity | Desired movement is recorded precisely. Java/Python/C/C++ movement needs AI assistance; deterministic movement remains limited to JS/TS top-level declarations. |
+| `update_implementation` | Separates an observed explanation from desired behavior; generation requires targeted AI implementation. |
+| Contract add/modify/remove | Supported entry guards and assertion edits change actual code. More complex guarantees require AI implementation. Documentation-only changes never count as an implemented behavioral change. |
+| `add_contract_dependency` | Records potential reliance with traceable symbol/contract IDs; it does not invent consuming source evidence. |
+
+For a working Java/C demonstration, open the projects in
+[`examples/program-graph`](examples/program-graph/README.md). Double-click a
+module, then a file; breadcrumbs return to the project. The inspector presents
+Overall Description, Interface Functions, Data Structures, Private Implementation,
+and Module Contracts. Public visibility and actual cross-module use are separate.
+Selecting a function, type, field, contract or file opens a focused inspector
+for that node. Its properties remain editable; the module editor is available
+through the Module details button.
+The project overview shows one arrow per module pair (with arrowheads at both
+ends for mutual dependencies). Select a module to reveal its individual incoming
+and outgoing dependency types; click the canvas background to collapse them.
+The module/file subgraphs use the same collapsed overview and reveal arrows only
+around their selected node.
+
 Three guarantees hold throughout:
 
 1. **A graph edit is never reported as implemented unless files changed.** If
@@ -271,7 +303,7 @@ Roughly 13,900 lines of source and 3,400 lines of tests.
 | Concern | File |
 |---|---|
 | File discovery and ignore rules | [`src/core/analyzer/scan.ts`](src/core/analyzer/scan.ts), [`ignore.ts`](src/core/analyzer/ignore.ts) |
-| TypeScript/JavaScript static analysis | [`src/core/analyzer/languages/typescript.ts`](src/core/analyzer/languages/typescript.ts) |
+| Language analyzers (JS/TS, Python, Java, C/C++) | [`src/core/analyzer/languages/`](src/core/analyzer/languages/) |
 | Specifier resolution (incl. tsconfig aliases) | [`src/core/analyzer/resolve.ts`](src/core/analyzer/resolve.ts) |
 | Grouping files into modules | [`src/core/analyzer/cluster.ts`](src/core/analyzer/cluster.ts) |
 | Building the graph with import evidence | [`src/core/analyzer/build-graph.ts`](src/core/analyzer/build-graph.ts) |
@@ -315,9 +347,17 @@ name, description, responsibilities, the **source files it owns**, its notable
 symbols with file and line, its public interface, its external packages, its
 origin, and metadata (confidence + basis, notes, LOC, tags, and `owner` /
 `lockedBy` fields reserved for collaboration). A `DependencyEdge` has a kind
-(`imports` / `depends_on` / `calls`), a weight, a `verified` flag, a confidence,
+(`imports` / `depends_on` / `calls` / `types` / `fields` / `contracts`), a weight, a `verified` flag, a confidence,
 and the concrete `DependencyEvidence` — importing file, imported file,
 specifier, symbols, line — that justifies it.
+
+Architecture schema 2 also stores the structured `ProgramModel` and each
+module's four component references. Scoped symbols, overloads, fields and
+contracts have identities and versions; relationships retain source ranges,
+resolution status and assumptions. Contracts distinguish explicit specifications,
+static results, inferred hypotheses and user intent, independently of verification.
+Schema-1 documents migrate additively. See the
+[schema and analysis design](docs/program-graph-design.md).
 
 **`GraphLayout`** — positions and expanded state, stored separately so visual
 changes cannot be mistaken for architectural ones.
@@ -359,7 +399,8 @@ and replaying the *derived* operations from the diff lands in the same place.
 
 ## Using an API key
 
-Everything above works without one. A key adds exactly three things:
+Static analysis, navigation, impact reporting and supported deterministic edits
+work without a key. A configured model adds:
 
 1. **Model-written module descriptions** during analysis. The model never
    changes the file-to-module mapping or invents an edge — it writes prose and a
@@ -368,6 +409,9 @@ Everything above works without one. A key adds exactly three things:
 2. **`move_responsibility`** — relocating the code that implements a
    responsibility.
 3. **`scaffold_module`** — implementing a module you created in the graph.
+4. **Fine-grained implementation work** — new functions/types, field changes,
+   desired implementation behavior and complex contracts. Existing implementation
+   explanations use actual source excerpts; inferred contracts remain unverified.
 
 Add the key in **Settings**. It is stored in Electron's per-user data directory,
 encrypted with the OS keychain via `safeStorage` where one is available (the UI
@@ -399,6 +443,21 @@ directory and reports precisely what happened:
   version can legitimately give a different answer.
 - **Tests.** Runs `npm test` when a `test` script exists, and notes when
   `node_modules` is absent.
+- **Java.** Runs `javac`; assertion-enabled test classes can be listed in
+  `cartograph.validation.json` as `javaTestClasses`.
+- **Python.** Parses sources with the available Python interpreter without
+  importing the project; configure test commands for behavioral checks.
+- **C/C++.** Runs GCC/G++ syntax checks. `cTestSources` lists the C sources to
+  compile, link and execute as assertion-based tests.
+- **Project-specific checks.** `checks` in `cartograph.validation.json` accepts
+  `{name, exe, args, kind: "tests" | "contracts"}` for existing build/test/verification
+  tools. Commands are spawned directly. Missing toolchains are reported as skipped.
+
+Java's default check uses analyzed sources without an external classpath; the
+C/C++ default check uses conventional include roots. Configure checks for
+Maven/Gradle projects or specialized compiler settings. Passing compilation is
+not a behavioral compatibility claim. Contract checks report unverified
+specifications separately from the results of exercised assertions/tests.
 
 A check that was skipped is never counted as a pass. `ValidationReport.passed`
 is true only when at least one check ran and none failed, and the summary says
@@ -413,7 +472,7 @@ the truth.
 npm test
 ```
 
-**116 tests across 6 files.** They use the real analyzer, the real engine and
+**165 tests across 10 files.** They use the real analyzer, the real engine and
 the real compiler — nothing about the pipeline is mocked.
 
 | File | What it covers |
@@ -424,6 +483,10 @@ the real compiler — nothing about the pipeline is mocked.
 | [`tests/unit/ai.test.ts`](tests/unit/ai.test.ts) | The tool surface and every tool's behaviour against a workspace, path refusals, and the "don't believe the model" logic — all with no network call |
 | [`tests/integration/pipeline.test.ts`](tests/integration/pipeline.test.ts) | The full round trip on a copy of the sample project: analyze → edit → generate → **type check and run the output's own tests** → re-analyze and confirm the new architecture. Plus in-place writing with a backup and a verified rollback, a symbol-level refactor, and the four ways an operation can decline |
 | [`tests/ui/app.test.tsx`](tests/ui/app.test.tsx) | The real React app in jsdom against the real backend: the graph renders, pending modules are flagged, a drag records no operation, a structural edit plans real file changes, writing reports honest validation, and an unsupported operation says so instead of claiming success |
+| [`tests/unit/languages.test.ts`](tests/unit/languages.test.ts) | Python packages, Java imports/types, C/C++ includes and compilation database paths, mixed projects and parser diagnostics |
+| [`tests/integration/program-graph.test.ts`](tests/integration/program-graph.test.ts) | Java/C functional modules, scoped/overloaded symbols, Python/C++ details, exact call/field/contract dependencies, pending edits, generated renames, sequential source anchors, compilation failures and behavior failures despite successful compilation |
+| [`tests/ui/program-graph.test.tsx`](tests/ui/program-graph.test.tsx) | Hierarchical navigation, all five inspector sections, contract CRUD as pending intent, impact and exact source evidence |
+| [`tests/ui/module-edges.test.tsx`](tests/ui/module-edges.test.tsx) | Collapsed module arrows, selection-only dependency detail, mutual direction, uncertainty, evidence inspection and individual dependency deletion |
 
 `npm run smoke` additionally boots the built Electron app and fails if the
 renderer logs an error.
@@ -435,17 +498,33 @@ renderer logs an error.
 Stated plainly, because a tool that rewrites your code should not be vague about
 what it cannot do.
 
-**Language support.** TypeScript and JavaScript only (`.ts`, `.tsx`, `.mts`,
-`.cts`, `.js`, `.jsx`, `.mjs`, `.cjs`). The analyzer is built to be extended —
-see [the language registry](src/core/analyzer/languages/index.ts) — but no other
-language is implemented. Files in other languages are listed in the explorer and
-reported as unanalyzed; they are never silently counted as part of a module.
+**Language support.** Module-tree analysis supports TypeScript/JavaScript,
+Python (`.py`, `.pyi`), Java (`.java`), and C/C++ sources and headers (`.c`, `.h`,
+`.cc`, `.cpp`, `.cxx`, `.c++`, `.hh`, `.hpp`, `.hxx`, `.h++`, `.ipp`, `.tpp`), including
+mixed-language repositories. Python, Java, and C/C++ use bundled Tree-sitter WASM
+grammars, so analysis needs no additional language runtimes or compilers.
+Python resolves packages under the project root, `src`, and `lib`, plus relative
+imports. Java indexes declared packages and types, resolves ordinary/static/wildcard
+imports, and detects project types referenced in the same package without imports.
+C/C++ resolves quoted includes beside the source file, then compiler include paths
+from a root-level `compile_commands.json` (`-I`, `-iquote`, `-isystem`, `/I`). Without
+a compilation entry, it checks the project root, `include`, `src`, and `lib` and
+reports ambiguity. Syntax errors, unresolved local imports, and macro includes
+produce analysis warnings. Dynamic Python imports, custom Python search paths,
+Java classpath inference, C/C++ modules, and preprocessor condition evaluation are
+not supported; conditional imports/includes are collected as potential dependencies.
+Automatic file-move import rewriting remains specific to TypeScript/JavaScript.
+Fine-grained source edits and Java/C/C++ checks are supported as described above.
+Symbol binding is conservative lexical analysis, not a complete Java classpath or
+C++ compiler semantic model. Unknown receivers, indirect calls and ambiguous
+overloads remain unresolved or potential. No formal behavioral prover is bundled.
+See [the language registry](src/core/analyzer/languages/index.ts) to add analyzers.
 
-**Clustering is a heuristic.** Module boundaries come from directory structure
-plus naming. On a codebase whose directories do not reflect its design, the
-first graph will be wrong, which is why every module carries a confidence score,
-a basis, and notes explaining how its boundary was drawn. Re-grouping is then a
-manual (or AI-assisted) edit, not an automatic re-cluster.
+**Clustering is a heuristic.** Java/C/C++ use resolved interface/implementation
+and private-helper relationships to group files across directories and subdivide
+packages. Independent public consumers remain separate. JS/TS/Python retain
+directory/naming clustering. Confidence and boundary notes explain these choices;
+they remain architectural suggestions rather than proven conceptual boundaries.
 
 **Dependency removal is not implemented.** `remove_dependency` on an edge that
 real imports back is refused with the list of offending imports. This is a
@@ -528,7 +607,7 @@ src/
     util/              paths (POSIX, portable) · id
   core/                The engine. Framework-free, no Electron.
     analyzer/          scan · ignore · resolve · lexicon · cluster · build-graph
-      languages/       LanguageAnalyzer registry + the TypeScript implementation
+      languages/       LanguageAnalyzer registry + JS/TS, Python, Java, C/C++ analyzers
     transform/         workspace (virtual FS) · imports (rewriting) · engine
       ops/             module-ops · move-symbol · dependency-ops
     ai/                client · tools · agent · prompts · transformer · enrich

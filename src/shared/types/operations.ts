@@ -15,6 +15,26 @@
  */
 
 import type { DependencyKind, ModuleId, NodePosition } from './architecture'
+import type { BehavioralContract, ProgramSymbol } from './program'
+
+export interface UpdateSymbolOperation {
+  type: 'update_symbol'
+  moduleId: ModuleId
+  symbolId: string
+  changes: Partial<Pick<ProgramSymbol, 'name' | 'signature' | 'parameters' | 'returnType' | 'accessibility' | 'description' | 'fields'>>
+  expectedVersion?: number
+}
+export interface AddSymbolOperation { type: 'add_symbol'; moduleId: ModuleId; symbol: ProgramSymbol }
+export interface RemoveSymbolOperation { type: 'remove_symbol'; moduleId: ModuleId; symbolId: string; expectedVersion?: number }
+export interface UpdateImplementationOperation { type: 'update_implementation'; moduleId: ModuleId; description: string }
+export interface AddContractOperation { type: 'add_contract'; moduleId: ModuleId; contract: BehavioralContract }
+export interface ModifyContractOperation {
+  type: 'modify_contract'; moduleId: ModuleId; contractId: string
+  changes: Partial<Pick<BehavioralContract, 'category' | 'description' | 'expression' | 'symbolId' | 'fieldId'>>
+  expectedVersion?: number
+}
+export interface RemoveContractOperation { type: 'remove_contract'; moduleId: ModuleId; contractId: string; expectedVersion?: number }
+export interface ContractRelianceOperation { type: 'add_contract_dependency'; moduleId: ModuleId; fromSymbolId: string; contractId: string }
 
 export interface OperationMeta {
   /** Unique operation id (also used as the idempotency key). */
@@ -90,6 +110,8 @@ export interface MoveSymbolOperation {
   type: 'move_symbol'
   /** Name of an exported declaration. */
   symbol: string
+  /** Exact identity for overloaded or scoped declarations. */
+  symbolId?: string
   /** Project-relative POSIX path of the file currently declaring it. */
   fromFile: string
   fromModuleId: ModuleId
@@ -122,6 +144,7 @@ export interface RemoveDependencyOperation {
   type: 'remove_dependency'
   from: ModuleId
   to: ModuleId
+  kind?: DependencyKind
 }
 
 export interface ScaffoldModuleOperation {
@@ -132,6 +155,8 @@ export interface ScaffoldModuleOperation {
 }
 
 export type GraphOperationBody =
+  | UpdateSymbolOperation | AddSymbolOperation | RemoveSymbolOperation | UpdateImplementationOperation
+  | AddContractOperation | ModifyContractOperation | RemoveContractOperation | ContractRelianceOperation
   | AddModuleOperation
   | RenameModuleOperation
   | UpdateModuleOperation
@@ -161,6 +186,7 @@ export type LayoutOperation = LayoutOperationBody & { id: string; actor: string 
 
 /** Operation types that require source code to change to be real. */
 export const STRUCTURAL_OPERATIONS: readonly GraphOperationType[] = [
+  'update_symbol', 'add_symbol', 'remove_symbol', 'update_implementation', 'add_contract', 'modify_contract', 'remove_contract', 'add_contract_dependency',
   'add_module',
   'rename_module',
   'delete_module',
@@ -186,6 +212,7 @@ export function isStructural(op: { type: GraphOperationType }): boolean {
 
 /** Operations that cannot be carried out without an AI model. */
 export const AI_REQUIRED_OPERATIONS: readonly GraphOperationType[] = [
+  'add_symbol', 'update_implementation',
   'move_responsibility',
   'scaffold_module'
 ]
@@ -196,6 +223,14 @@ export function requiresAi(op: { type: GraphOperationType }): boolean {
 
 export function describeOperation(op: GraphOperationBody): string {
   switch (op.type) {
+    case 'update_symbol': return 'Modify function or data structure'
+    case 'add_symbol': return `Add ${op.symbol.kind} ${op.symbol.name}`
+    case 'remove_symbol': return 'Remove source symbol'
+    case 'update_implementation': return 'Change implementation behavior'
+    case 'add_contract': return `Add ${op.contract.category} contract`
+    case 'modify_contract': return 'Modify behavioral contract'
+    case 'remove_contract': return 'Remove behavioral contract'
+    case 'add_contract_dependency': return 'Declare contract reliance'
     case 'add_module':
       return `Add module "${op.module.name}"`
     case 'rename_module':
@@ -225,6 +260,9 @@ export function describeOperation(op: GraphOperationBody): string {
 
 /** Human-readable label for each operation type, used throughout the UI. */
 export const OPERATION_LABELS: Record<GraphOperationType, string> = {
+  update_symbol: 'Modify source symbol', add_symbol: 'Add source symbol', remove_symbol: 'Remove source symbol',
+  update_implementation: 'Change implementation', add_contract: 'Add contract', modify_contract: 'Modify contract',
+  remove_contract: 'Remove contract', add_contract_dependency: 'Declare contract reliance',
   add_module: 'Create module',
   rename_module: 'Rename module',
   update_module: 'Update module properties',

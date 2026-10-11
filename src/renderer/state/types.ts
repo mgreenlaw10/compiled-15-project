@@ -115,6 +115,14 @@ export interface LayoutSlice {
 }
 
 export interface SelectionSlice {
+  viewScope: { moduleId: ModuleId; file?: string } | null
+  selectedSymbolId: string | null
+  selectedRelationshipId: string | null
+  openModule(id: ModuleId): void
+  openFile(moduleId: ModuleId, file: string): void
+  backToProject(): void
+  selectSymbol(id: string | null): void
+  selectRelationship(id: string | null): void
   selectedModuleId: ModuleId | null
   selectedFile: string | null
   select(id: ModuleId | null): void

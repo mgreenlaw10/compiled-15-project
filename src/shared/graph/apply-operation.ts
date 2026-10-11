@@ -19,6 +19,8 @@ import type { ArchitectureGraph, ModuleNode } from '../types/architecture'
 import type { GraphOperation, GraphOperationBody } from '../types/operations'
 import { basename, isWithin, join, normalizeRel } from '../util/paths'
 import { createEdge, createModule, findModule } from './model'
+import { applyProgramOperation } from './program-operations'
+import { refreshComponents } from './program'
 
 export interface ApplyResultOk {
   ok: true
@@ -67,7 +69,21 @@ function withModules(
   graph: ArchitectureGraph,
   modules: ModuleNode[]
 ): ArchitectureGraph {
-  return { ...graph, modules, version: graph.version + 1 }
+  const nextFiles = new Set(modules.flatMap((m) => m.files))
+  const moved = new Map<string, string>()
+  for (const file of graph.modules.flatMap((m) => m.files)) {
+    if (nextFiles.has(file)) continue
+    const candidates = [...nextFiles].filter((f) => basename(f) === basename(file))
+    if (candidates.length === 1) moved.set(file, candidates[0])
+  }
+  const retarget = <T extends { file: string }>(source: T): T => ({ ...source, file: moved.get(source.file) ?? source.file })
+  const program = { ...graph.program,
+    symbols: graph.program.symbols.map((s) => ({ ...s, source: retarget(s.source), nameSource: retarget(s.nameSource), signatureSource: retarget(s.signatureSource),
+      bodySource: s.bodySource ? retarget(s.bodySource) : undefined, fields: s.fields.map((f) => ({ ...f, source: retarget(f.source) })) })),
+    relationships: graph.program.relationships.map((r) => ({ ...r, source: retarget(r.source), targetSource: r.targetSource ? retarget(r.targetSource) : undefined })),
+    contracts: graph.program.contracts.map((c) => ({ ...c, evidence: c.evidence.map(retarget), enforcement: c.enforcement ? { ...c.enforcement, expressionSource: retarget(c.enforcement.expressionSource) } : undefined })),
+    fileRelationships: graph.program.fileRelationships.map((r) => ({ ...r, fromFile: moved.get(r.fromFile) ?? r.fromFile, toFile: moved.get(r.toFile) ?? r.toFile })) }
+  return refreshComponents({ ...graph, modules, program, version: graph.version + 1 })
 }
 
 export function applyOperation(
@@ -75,6 +91,8 @@ export function applyOperation(
   op: GraphOperationBody
 ): ApplyOperationResult {
   const warnings: string[] = []
+  const programResult = applyProgramOperation(graph, op)
+  if (programResult) return programResult
 
   switch (op.type) {
     case 'add_module': {
@@ -293,6 +311,7 @@ export function applyOperation(
       if (!from) return { ok: false, error: `Module not found: ${op.fromModuleId}` }
       if (!to) return { ok: false, error: `Module not found: ${op.toModuleId}` }
       const fromFile = normalizeRel(op.fromFile)
+      const detailed = op.symbolId ? graph.program.symbols.find((s) => s.id === op.symbolId && s.source.file === fromFile) : undefined
       const symbol = from.symbols.find(
         (s) => s.name === op.symbol && s.file === fromFile
       )
@@ -303,6 +322,8 @@ export function applyOperation(
       }
       const toFile = op.toFile
         ? normalizeRel(op.toFile)
+        : detailed && !['typescript', 'javascript'].includes(detailed.language)
+          ? to.files.find((f) => graph.program.symbols.some((s) => s.source.file === f && s.language === detailed.language)) ?? fromFile
         : to.directory
           ? join(to.directory, 'index.ts')
           : fromFile
@@ -329,7 +350,18 @@ export function applyOperation(
         }
         return m
       })
-      return { ok: true, graph: withModules(graph, modules), warnings }
+      let next = withModules(graph, modules)
+      if (detailed) {
+        const targetType = graph.program.symbols.find((s) => s.source.file === toFile && ['class', 'struct', 'interface'].includes(s.kind))
+        next = refreshComponents({ ...next, program: { ...next.program, symbols: next.program.symbols.map((s) => {
+          if (s.id !== detailed.id) return s
+          const scope = detailed.kind === 'method' && targetType ? targetType.qualifiedName : s.scope
+          return { ...s, scope, qualifiedName: scope ? `${scope}.${s.name}` : s.name,
+            source: { ...s.source, file: toFile }, nameSource: { ...s.nameSource, file: toFile }, signatureSource: { ...s.signatureSource, file: toFile },
+            bodySource: s.bodySource ? { ...s.bodySource, file: toFile } : undefined, version: s.version + 1 }
+        }) } })
+      }
+      return { ok: true, graph: next, warnings }
     }
 
     case 'move_responsibility': {
@@ -368,7 +400,7 @@ export function applyOperation(
         return { ok: false, error: `Module not found: ${op.to}` }
       }
       const existing = graph.edges.find(
-        (e) => e.from === op.from && e.to === op.to
+        (e) => e.from === op.from && e.to === op.to && e.kind === op.kind
       )
       if (existing) {
         if (existing.kind === op.kind) {
@@ -407,7 +439,7 @@ export function applyOperation(
 
     case 'remove_dependency': {
       const existing = graph.edges.find(
-        (e) => e.from === op.from && e.to === op.to
+        (e) => e.from === op.from && e.to === op.to && (!op.kind || e.kind === op.kind)
       )
       if (!existing) return { ok: false, error: 'That dependency does not exist' }
       if (existing.verified) {
@@ -438,10 +470,9 @@ export function applyOperation(
     }
 
     default: {
-      const exhaustive: never = op
       return {
         ok: false,
-        error: `Unknown operation: ${JSON.stringify(exhaustive)}`
+        error: `Unknown operation: ${JSON.stringify(op)}`
       }
     }
   }
