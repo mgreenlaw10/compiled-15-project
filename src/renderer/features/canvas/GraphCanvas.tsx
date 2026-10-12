@@ -18,6 +18,7 @@
 import { useCallback, useEffect, useMemo } from 'react'
 import {
   Background,
+  ConnectionMode,
   BackgroundVariant,
   Controls,
   MiniMap,
@@ -45,7 +46,7 @@ import {
   PENDING_NODE_COLOR,
   toModuleFlowEdges,
   underlyingDependencies,
-  DependencyDetailEdge
+  FloatingEdge
 } from './edges'
 import {
   ModuleNodeView,
@@ -55,7 +56,9 @@ import {
 import { ProgramCanvas } from './ProgramCanvas'
 
 const nodeTypes = { module: ModuleNodeView }
-const edgeTypes = { dependencyDetail: DependencyDetailEdge }
+// Both the default (overview) and detail arrows render as FloatingEdge, which
+// attaches each end to whichever side of its module gives the shortest arrow.
+const edgeTypes = { default: FloatingEdge, dependencyDetail: FloatingEdge }
 
 export function GraphCanvas(): JSX.Element {
   const graph = useStore((s) => s.desired)
@@ -209,6 +212,7 @@ export function GraphCanvas(): JSX.Element {
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        connectionMode={ConnectionMode.Loose}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeDragStop={onNodeDragStop}

@@ -32,9 +32,9 @@ export function ProgramCanvas({ module, file }: { module: ModuleNode; file?: str
         const members = symbols.filter((s) => s.source.file === name)
         nodes.push({ id: name, position: layout.positions[`file:${name}`] ?? { x: (i % 3) * 300, y: Math.floor(i / 3) * 150 },
           type: 'program',
-          data: { label: name.split('/').pop() ?? name, badge: 'file',
+          data: { label: name.split('/').pop() ?? name, badge: 'file', tone: 'file',
             detail: `${name} · ${members.filter(isCallable).length} functions · ${members.filter(isDataType).length} types` },
-          style: { width: 210, background: '#202732', color: '#dce3ed', borderColor: '#4d6a94' } })
+          style: { width: 240 } })
       })
       const paired = new Set<string>()
       for (const relation of graph.program.relationships) {
@@ -54,24 +54,24 @@ export function ProgramCanvas({ module, file }: { module: ModuleNode; file?: str
       }
       graph.program.contracts.filter((c) => c.moduleId === module.id && !c.symbolId).forEach((c, i) => nodes.push({
         id: `contract:${c.id}`, type: 'program', position: layout.positions[`file:contract:${c.id}`] ?? { x: 950, y: i * 125 },
-        data: { label: c.category.replaceAll('_', ' '), badge: 'module contract',
+        data: { label: c.category.replaceAll('_', ' '), badge: 'module contract', tone: 'contract',
           detail: `${c.expression ?? c.description} · ${c.provenance} · ${c.verification}` },
-        style: { width: 190, fontSize: 11, background: '#30232e', color: '#dce3ed', borderColor: '#e482a7' }
+        style: { width: 210 }
       }))
     } else {
       const boundary = graph.program.relationships.filter((r) => ids.has(r.fromSymbolId) && r.toSymbolId && !ids.has(r.toSymbolId))
       const extra = [...new Set(boundary.map((r) => r.toSymbolId!))].map((id) => symbolById.get(id)).filter((s) => !!s)
       const all = [...symbols, ...extra]
       all.forEach((s, i) => nodes.push({ id: s.id, type: 'program', position: layout.positions[`symbol:${s.id}`] ?? { x: (i % 3) * 310, y: Math.floor(i / 3) * 150 },
-        data: { label: s.name, badge: s.kind.replaceAll('_', ' '),
+        data: { label: s.name, badge: s.kind.replaceAll('_', ' '), tone: isDataType(s) ? 'type' : 'function',
+          external: !ids.has(s.id),
           detail: `${s.qualifiedName} — ${s.signature} · ${s.accessibility} · ${s.source.file}:${s.source.line}` },
-        style: { width: 190, fontSize: 11, background: ids.has(s.id) ? '#202732' : '#30303b', color: '#dce3ed',
-          border: `1px ${ids.has(s.id) ? 'solid' : 'dashed'} ${isDataType(s) ? '#5fc6ae' : '#c08cf5'}` } }))
+        style: { width: 210 } }))
       const fields = all.flatMap((s) => s.fields.map((f) => ({ ...f, owner: s })))
       fields.forEach((f, i) => nodes.push({ id: f.id, type: 'program', position: layout.positions[`symbol:${f.id}`] ?? { x: 950, y: i * 110 },
-        data: { label: f.name, badge: 'field',
+        data: { label: f.name, badge: 'field', tone: 'field',
           detail: `${f.owner.qualifiedName}.${f.name}: ${f.type} · ${f.accessibility} · ${f.source.file}:${f.source.line}` },
-        style: { width: 170, fontSize: 11, background: '#202732', color: '#dce3ed', borderColor: '#e3ac67' } }))
+        style: { width: 190 } }))
       const nodeIds = new Set(nodes.map((s) => s.id))
       for (const r of graph.program.relationships.filter((r) => nodeIds.has(r.fromSymbolId) && r.toSymbolId && nodeIds.has(r.toSymbolId))) {
         if (r.kind === 'contract') continue
@@ -84,9 +84,9 @@ export function ProgramCanvas({ module, file }: { module: ModuleNode; file?: str
       const contracts = graph.program.contracts.filter((c) => c.symbolId && ids.has(c.symbolId) || contractIds.has(c.id))
       contracts.forEach((c, i) => {
         nodes.push({ id: `contract:${c.id}`, type: 'program', position: layout.positions[`symbol:contract:${c.id}`] ?? { x: 1250, y: i * 125 },
-          data: { label: c.category.replaceAll('_', ' '), badge: 'contract',
+          data: { label: c.category.replaceAll('_', ' '), badge: 'contract', tone: 'contract',
             detail: `${c.expression ?? c.description} · ${c.provenance} · ${c.verification}` },
-          style: { width: 190, fontSize: 11, background: '#30232e', color: '#dce3ed', borderColor: '#e482a7' } })
+          style: { width: 210 } })
         if (c.symbolId && nodeIds.has(c.symbolId)) edges.push({ id: `contract:${c.id}`, source: c.fieldId ?? c.symbolId, target: `contract:${c.id}`, label: 'specification', style: { stroke: '#e482a7', strokeDasharray: '5 4' } })
       })
       for (const r of outgoing.filter((r) => r.contractId)) edges.push({ id: r.id, source: r.fromSymbolId, target: `contract:${r.contractId}`, label: 'contract reliance',
@@ -97,8 +97,9 @@ export function ProgramCanvas({ module, file }: { module: ModuleNode; file?: str
         const id = `unresolved:${r.fromSymbolId}:${r.targetName}`
         if (!unknownIds.has(id)) {
           nodes.push({ id, type: 'program', position: layout.positions[`symbol:${id}`] ?? { x: 1550, y: unknownIds.size * 100 },
-            data: { label: r.targetName, badge: `unresolved ${r.kind}`, detail: `Unresolved ${r.kind} of ${r.targetName}` },
-            style: { width: 180, fontSize: 11, background: '#292c33', color: '#dce3ed', border: '1px dashed #8b93a3' } })
+            data: { label: r.targetName, badge: `unresolved ${r.kind}`, tone: 'unresolved', external: true,
+              detail: `Unresolved ${r.kind} of ${r.targetName}` },
+            style: { width: 200 } })
           unknownIds.add(id)
         }
         edges.push({ id: r.id, source: r.fromSymbolId, target: id, label: r.kind, style: { stroke: '#8b93a3', strokeDasharray: '5 4' } })

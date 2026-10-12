@@ -22,6 +22,8 @@ import { Badge } from '../../ui'
 
 export const FILE_DRAG_MIME = 'application/x-cartograph-file'
 
+const SIDES = [Position.Top, Position.Right, Position.Bottom, Position.Left] as const
+
 export interface FileDragPayload {
   file: string
   fromModuleId: string
@@ -90,7 +92,12 @@ export function ModuleNodeView({
         }
       }}
     >
-      <Handle type="target" position={Position.Left} />
+      {/* One handle per side. All are sources and the canvas runs in loose
+          connection mode, so a dependency can be drawn from any side to any
+          side; where existing arrows attach is decided by FloatingEdge. */}
+      {SIDES.map((side) => (
+        <Handle key={side} id={side} type="source" position={side} />
+      ))}
 
       <div className="node-head">
         <span className="node-name" title={module.name}>
@@ -162,7 +169,6 @@ export function ModuleNodeView({
         />
       ) : null}
 
-      <Handle type="source" position={Position.Right} />
     </div>
   )
 }

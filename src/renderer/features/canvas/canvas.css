@@ -191,8 +191,68 @@
 .program-source { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; max-height: 360px; overflow: auto; }
 
 /* Source-graph nodes: one line, the thing's own name. Detail lives in the inspector. */
-.pnode { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
-.pnode-badge { flex: none; color: var(--text-dim, #8b93a3); font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; }
-.pnode-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+/*
+ * Source-graph nodes share the module node's frame, so drilling into a module
+ * looks like the same canvas one level down. Kind is carried by a coloured
+ * leading edge whose colours match the arrows that reach the node.
+ */
+.pnode {
+  --pnode-accent: var(--border-strong);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--pnode-accent);
+  border-radius: var(--radius);
+  padding: 9px 11px;
+  color: var(--text);
+  cursor: grab;
+  transition: border-color 0.12s, box-shadow 0.12s, opacity 0.12s;
+}
+
+.pnode:hover {
+  border-color: var(--accent-dim);
+  border-left-color: var(--pnode-accent);
+}
+
+.pnode.is-selected {
+  border-color: var(--accent);
+  border-left-color: var(--pnode-accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* Outside the open module or file: present for context, visibly secondary. */
+.pnode.is-external {
+  background: var(--bg-raised);
+  opacity: 0.72;
+}
+
+.pnode--file { --pnode-accent: #4d6a94; }
+.pnode--function { --pnode-accent: #c08cf5; }
+.pnode--type { --pnode-accent: #5fc6ae; }
+.pnode--field { --pnode-accent: #e3ac67; }
+.pnode--contract { --pnode-accent: #e482a7; }
+.pnode--unresolved { --pnode-accent: #8b93a3; }
+
+.pnode-badge {
+  flex: none;
+  color: var(--text-faint);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pnode-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 13px;
+}
 .program-detail { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; color: var(--text-dim, #8b93a3); }
 .program-member { display: flex; align-items: baseline; gap: 6px; margin: var(--space-1) 0; }
