@@ -4,7 +4,7 @@
 
 label.field {
   display: block;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
 }
 
 label.field > span.label {
@@ -14,7 +14,7 @@ label.field > span.label {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-faint);
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
 }
 
 label.field > span.hint {

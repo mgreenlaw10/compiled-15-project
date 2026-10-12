@@ -64,3 +64,74 @@
 .btn--icon {
   padding: 4px 6px;
 }
+
+/*
+ * A button whose label is a path or other long text. `.btn` is nowrap, which
+ * is right for actions but makes a long path overflow its pane instead of
+ * wrapping.
+ */
+.btn--wrap {
+  display: block;
+  width: 100%;
+  white-space: normal;
+  text-align: left;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+
+/*
+ * Clickable entries in a list of a module's members — functions, types,
+ * fields. Tinted so they read as navigation into the module rather than as
+ * ordinary actions sitting next to them.
+ */
+.btn--member {
+  color: var(--accent);
+  border-color: transparent;
+  background: rgba(106, 166, 255, 0.08);
+}
+
+.btn--member:hover:not(:disabled) {
+  background: rgba(106, 166, 255, 0.16);
+  border-color: var(--accent-dim);
+}
+
+/* An "Add" control that closes a section's list. */
+.btn--add {
+  margin: var(--space-1) 0 var(--space-3);
+}
+
+/*
+ * Clickable module members — symbols, fields, files, contracts.
+ *
+ * Tinted apart from ordinary buttons because a list of them is navigation
+ * through the graph, not a row of commands: they read as links that happen to
+ * be buttons, and making them look like Save or Delete invites misreading.
+ */
+.btn--member {
+  background: transparent;
+  border-color: transparent;
+  color: var(--accent);
+}
+
+.btn--member:hover:not(:disabled) {
+  background: var(--accent-dim);
+  border-color: var(--accent-dim);
+  color: var(--text);
+}
+
+/* For long values — a path, a signature — that must not force a scrollbar. */
+.btn--wrap {
+  display: block;
+  width: 100%;
+  white-space: normal;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * A button that introduces the list or editor under it. The margin is a token
+ * so every section's action sits the same distance from its content.
+ */
+.btn--section-action {
+  margin-bottom: var(--space-2);
+}

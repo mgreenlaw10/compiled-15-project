@@ -201,8 +201,8 @@
 /* Controls that belong to a section rather than to its header. */
 .pane-section-actions {
   display: flex;
-  gap: 6px;
-  padding: 8px 12px 0;
+  gap: var(--space-2);
+  padding: var(--space-2) 12px var(--space-1);
 }
 
 .pane-header {

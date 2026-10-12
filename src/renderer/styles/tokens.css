@@ -37,6 +37,16 @@
   --danger: #f2706b;
   --ai: #c08cf5;
 
+  /*
+   * Vertical rhythm. Every gap between stacked elements should be one of
+   * these rather than a one-off number, so a section heading, a card and an
+   * action button always sit the same distance apart.
+   */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 14px;
+  --space-4: 20px;
+
   --radius: 6px;
   --radius-sm: 4px;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,

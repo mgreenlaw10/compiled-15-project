@@ -34,7 +34,7 @@ export function FieldEditor({ field: f, symbol, module, focused = false }: { fie
       <label className="field"><span className="label">Field visibility</span><select value={f.accessibility} onChange={(e) => update({ accessibility: e.target.value as ProgramSymbol['accessibility'] })}>
         {['public', 'protected', 'private', 'package', 'internal', 'unknown'].map((v) => <option key={v}>{v}</option>)}
       </select></label>
-      <button className="btn btn--ghost btn--sm" onClick={() => {
+      <button className="btn btn--member btn--sm" onClick={() => {
         if (dispatch({ type: 'update_symbol', moduleId: module.id, symbolId: symbol.id, expectedVersion: symbol.version,
           changes: { fields: symbol.fields.filter((item) => item.id !== f.id) } }) && useStore.getState().selectedSymbolId === f.id) useStore.getState().selectSymbol(symbol.id)
       }}>Remove field</button>
@@ -70,7 +70,7 @@ export function SymbolCard({ symbol, module, focused = false }: { symbol: Progra
     <p className="program-detail">
       <span>{symbol.accessibility}</span>
       <span>{symbol.publiclyAccessible ? 'public API' : 'internal'}</span>
-      <button className="btn btn--ghost btn--sm" onClick={() => openFile(module.id, symbol.source.file)}>{symbol.source.file}{draft ? ' (planned)' : `:${symbol.source.line}`}</button>
+      <button className="btn btn--member btn--sm" onClick={() => openFile(module.id, symbol.source.file)}>{symbol.source.file}{draft ? ' (planned)' : `:${symbol.source.line}`}</button>
     </p>
     <details className="program-card" open={draft || undefined}><summary>Properties</summary>
       <p className="hint mono">{symbol.qualifiedName}</p>
@@ -87,7 +87,7 @@ export function SymbolCard({ symbol, module, focused = false }: { symbol: Progra
         {symbol.parameters.map((parameter, index) => <div className="program-parameter" key={`${symbol.id}:${index}:${parameter.name}:${parameter.type}`}>
           <EditText label={`Parameter ${index + 1} name`} value={parameter.name} commit={(name) => update({ parameters: symbol.parameters.map((p, i) => i === index ? { ...p, name } : p) })} />
           <EditText label={`Parameter ${index + 1} type`} value={parameter.type} commit={(type) => update({ parameters: symbol.parameters.map((p, i) => i === index ? { ...p, type } : p) })} />
-          <button className="btn btn--ghost btn--sm" onClick={() => update({ parameters: symbol.parameters.filter((_p, i) => i !== index) })}>Remove parameter</button>
+          <button className="btn btn--member btn--sm" onClick={() => update({ parameters: symbol.parameters.filter((_p, i) => i !== index) })}>Remove parameter</button>
         </div>)}
         <button className="btn btn--sm" onClick={() => update({ parameters: [...symbol.parameters, { name: 'argument', type: draft ? '' : symbol.language === 'python' ? 'int' : 'unknown', optional: false, variadic: false }] })}>Add parameter</button>
         <EditText key={`${symbol.id}:return:${symbol.returnType}`} label="Return type" value={symbol.returnType} commit={(returnType) => update({ returnType })} />
@@ -108,7 +108,7 @@ export function SymbolCard({ symbol, module, focused = false }: { symbol: Progra
         <p className="hint">{callers.length} known {callers.length === 1 ? 'caller' : 'callers'} · {crossModule} cross-module {crossModule === 1 ? 'use' : 'uses'}</p>
         {callers.map((r) => <p className="hint" key={r.id}>Caller: {graph.program.symbols.find((s) => s.id === r.fromSymbolId)?.qualifiedName} · {r.source.file}:{r.source.line} ({r.resolution})</p>)}
         {outgoing.map((r) => <div key={r.id} className="hint">
-          <button className="btn btn--ghost btn--sm" onClick={() => useStore.getState().selectRelationship(r.id)}>{r.kind}: {r.targetName} ({r.resolution})</button>
+          <button className="btn btn--member btn--sm" onClick={() => useStore.getState().selectRelationship(r.id)}>{r.kind}: {r.targetName} ({r.resolution})</button>
           <span>{r.source.file}:{r.source.line}</span>
         </div>)}
         {isDataType(symbol) && consumers.map((r) => <p className="hint" key={r.id}>{r.kind}: used by {graph.program.symbols.find((s) => s.id === r.fromSymbolId)?.qualifiedName} · {r.source.file}:{r.source.line} ({r.resolution})</p>)}
@@ -181,13 +181,13 @@ export function ProgramInspector({ module }: { module: ModuleNode }): JSX.Elemen
     <SectionTitle>Interface Functions</SectionTitle>
     {symbols.filter((s) => isCallable(s) && s.publiclyAccessible).map((s) => <SymbolCard key={s.id} symbol={s} module={module} />)}
     {!module.components.interface.functionIds.length && <p className="hint">No publicly accessible functions were found.</p>}
-    <button className="btn btn--sm" aria-label="Add interface function" onClick={() => add('interface')}>Add</button>
+    <button className="btn btn--sm btn--add" aria-label="Add interface function" onClick={() => add('interface')}>Add</button>
     <SectionTitle>Data Structures</SectionTitle>
     {symbols.filter(isDataType).map((s) => <SymbolCard key={s.id} symbol={s} module={module} />)}
     {!module.components.dataStructures.symbolIds.length && <p className="hint">No data structures were found.</p>}
-    <button className="btn btn--sm" aria-label="Add data structure" onClick={() => add('data')}>Add</button>
+    <button className="btn btn--sm btn--add" aria-label="Add data structure" onClick={() => add('data')}>Add</button>
     <SectionTitle>Private Implementation</SectionTitle>
-    <button className="btn btn--sm" aria-label="Add private implementation" onClick={() => add('implementation')}>Add</button>
+    <button className="btn btn--sm btn--add" aria-label="Add private implementation" onClick={() => add('implementation')}>Add</button>
     <EditText key={`${module.id}:${module.components.implementation.desiredDescription}`} label="Desired implementation behavior" multiline
       value={module.components.implementation.desiredDescription ?? ''} commit={(text) => dispatch({ type: 'update_implementation', moduleId: module.id, description: text })} />
     {symbols.filter((s) => isCallable(s) && !s.publiclyAccessible).map((s) => <SymbolCard key={s.id} symbol={s} module={module} />)}

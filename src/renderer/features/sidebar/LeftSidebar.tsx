@@ -38,14 +38,14 @@ function ProjectInfoSection(): JSX.Element {
 
   return (
     <div className="pane-body">
-      <dl className="kv">
+      <dl className="kv kv--compact">
         <dt>Name</dt>
         <dd>{project.name}</dd>
         <dt>Path</dt>
         <dd>
           <button
-            className="btn btn--ghost btn--sm"
-            style={{ padding: 0, textAlign: 'left' }}
+            className="btn btn--ghost btn--wrap"
+            style={{ padding: 0 }}
             title="Show in file manager"
             onClick={() => reveal(project.root)}
           >
@@ -290,13 +290,13 @@ export function LeftSidebar(): JSX.Element {
   const setWidth = useStore((s) => s.setLeftPaneWidth)
 
   // Independently collapsible rather than one-at-a-time: these answer
-  // different questions and people want more than one open at once. Team
-  // starts closed because it is empty unless the project is collaborative.
+  // different questions and people often want more than one open. Only
+  // Project starts open, so the sidebar opens quiet rather than full.
   const [open, setOpen] = useState<Record<SectionName, boolean>>({
     project: true,
     team: false,
-    modules: true,
-    explorer: true
+    modules: false,
+    explorer: false
   })
   const toggle = (name: SectionName): void =>
     setOpen((current) => ({ ...current, [name]: !current[name] }))
@@ -322,7 +322,7 @@ export function LeftSidebar(): JSX.Element {
         >
           <div className="pane-section-actions">
             <button
-              className="btn btn--sm"
+              className="btn"
               onClick={() => void openProject()}
               disabled={busy !== 'idle'}
             >

@@ -30,17 +30,17 @@ export function NodeInspector({ module }: { module: ModuleNode }): JSX.Element {
   return <aside className="pane pane--right">
     <div className="pane-header"><span style={{ textTransform: 'capitalize' }}>{title}</span></div>
     <div className="pane-body">
-      <button className="btn btn--ghost btn--sm" onClick={() => select(owner.id)}>Module details: {owner.name}</button>
+      <button className="btn btn--member btn--sm" onClick={() => select(owner.id)}>Module details: {owner.name}</button>
       {relationshipId && <DependencyEvidence id={relationshipId} />}
       {symbol && !field && <>
         <SymbolCard key={symbol.id} symbol={symbol} module={owner} focused />
         {isDataType(symbol) && <><SectionTitle>Members</SectionTitle>{graph.program.symbols.filter((s) => s.scope === symbol.qualifiedName && s.source.file === symbol.source.file).map((s) =>
-          <button key={s.id} className="btn btn--ghost btn--sm" title={s.signature} onClick={() => { openFile(owner.id, s.source.file); selectSymbol(s.id) }}>{s.name}</button>)}</>}
+          <button key={s.id} className="btn btn--sm btn--member" title={s.signature} onClick={() => { openFile(owner.id, s.source.file); selectSymbol(s.id) }}>{s.name}</button>)}</>}
         {symbol.sourceText && <details className="program-card"><summary>Source code</summary><pre className="program-source">{symbol.sourceText}</pre></details>}
       </>}
       {symbol && field && <>
         <FieldEditor key={field.id} field={field} symbol={symbol} module={owner} focused />
-        <button className="btn btn--ghost btn--sm" onClick={() => selectSymbol(symbol.id)}>Declaring type: {symbol.name}</button>
+        <button className="btn btn--member btn--sm" onClick={() => selectSymbol(symbol.id)}>Declaring type: {symbol.name}</button>
         {(() => {
           const uses = graph.program.relationships.filter((r) => r.toFieldId === field.id)
           return uses.length ? <details className="program-card"><summary>Field dependencies ({uses.length})</summary>
@@ -55,7 +55,7 @@ export function NodeInspector({ module }: { module: ModuleNode }): JSX.Element {
         <button className="btn" onClick={() => openFile(owner.id, file)}>Open file structure</button>
         <SectionTitle>File symbols</SectionTitle>
         {graph.program.symbols.filter((s) => s.source.file === file).map((s) => <div key={s.id} className="program-member">
-          <button className="btn btn--ghost btn--sm" title={`${s.signature} · line ${s.source.line}`}
+          <button className="btn btn--sm btn--member" title={`${s.signature} · line ${s.source.line}`}
             onClick={() => { openFile(owner.id, file); selectSymbol(s.id) }}>{s.name}</button>
           <span className="hint">{s.kind.replaceAll('_', ' ')}</span>
         </div>)}

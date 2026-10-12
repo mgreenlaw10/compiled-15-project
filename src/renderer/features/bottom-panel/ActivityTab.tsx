@@ -2,16 +2,20 @@
  * The activity log: every backend and UI event, filterable by channel.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 
 import { useStore } from '../../state/store'
 import { Empty, formatTime } from '../../ui'
 import { CHANNEL_LABELS } from './labels'
 
-export function ActivityTab(): JSX.Element {
+export function ActivityTab({
+  showDebug
+}: {
+  /** Owned by the panel, because the toggle now lives in its tab bar. */
+  showDebug: boolean
+}): JSX.Element {
   const logs = useStore((s) => s.logs)
   const clearLogs = useStore((s) => s.clearLogs)
-  const [showDebug, setShowDebug] = useState(false)
   const endRef = useRef<HTMLDivElement | null>(null)
 
   const visible = useMemo(
@@ -33,14 +37,6 @@ export function ActivityTab(): JSX.Element {
           padding: '0 12px 6px'
         }}
       >
-        <label className="checkbox" style={{ margin: 0 }}>
-          <input
-            type="checkbox"
-            checked={showDebug}
-            onChange={(event) => setShowDebug(event.target.checked)}
-          />
-          <span className="checkbox-text">Show detail</span>
-        </label>
         <span className="spacer" style={{ flex: 1 }} />
         <button className="btn btn--ghost btn--sm" onClick={clearLogs}>
           Clear

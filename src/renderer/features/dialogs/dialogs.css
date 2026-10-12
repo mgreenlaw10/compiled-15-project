@@ -68,14 +68,14 @@
  */
 .settings-body > .field,
 .settings-body > .checkbox {
-  margin-bottom: 18px;
+  margin-bottom: var(--space-4);
 }
 
 .settings-body > .field:last-child,
 .settings-body > .checkbox:last-child {
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
 }
 
 .settings-body > .field > .hint {
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }

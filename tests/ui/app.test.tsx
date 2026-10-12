@@ -167,7 +167,9 @@ describe('the application shell', () => {
     expect(screen.getByText('Graph matches the source code')).toBeTruthy()
     expect(screen.getByText(/\d+ verified/)).toBeTruthy()
 
-    // The explorer labels each source file with its owning module.
+    // The explorer labels each source file with its owning module. Its
+    // accordion section starts closed, so it is opened first.
+    fireEvent.click(screen.getByText('Project explorer'))
     const explorer = screen.getByText('Project explorer').closest('.pane-section')!
     expect(within(explorer as HTMLElement).getAllByText('Auth').length).toBeGreaterThan(0)
   })
@@ -181,12 +183,13 @@ describe('the application shell', () => {
       useStore.getState().select(auth.id)
     })
 
-    // The inspector shows the source mapping and the public interface.
+    // The inspector shows the module's editable properties and its
+    // component sections. The file list, public-interface list and
+    // declaration list were removed from this pane.
     expect(await screen.findByDisplayValue('Auth')).toBeTruthy()
     expect(screen.getByDisplayValue('src/auth')).toBeTruthy()
-    expect(screen.getByText('src/auth/session.ts', { selector: '.row-title' })).toBeTruthy()
-    // Listed both as part of the public interface and as a declaration.
-    expect(screen.getAllByText('createSession').length).toBeGreaterThan(1)
+    expect(screen.getByText('Interface Functions')).toBeTruthy()
+    expect(screen.getAllByText('createSession').length).toBeGreaterThan(0)
 
     // The inspector no longer explains the two kinds of edit inline, so the
     // status bar is the only thing left that distinguishes a documentation

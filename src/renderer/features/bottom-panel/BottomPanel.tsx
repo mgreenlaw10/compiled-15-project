@@ -28,6 +28,10 @@ export function BottomPanel(): JSX.Element {
   const changeSet = useStore((s) => s.changeSet)
   const logs = useStore((s) => s.logs)
   const [collapsed, setCollapsed] = useState(false)
+  // Lives here rather than in ActivityTab, because the control sits in this
+  // bar. Only shown while that tab is active: a toggle that changes nothing
+  // on the tab you are looking at is worse than one you have to go find.
+  const [showDebug, setShowDebug] = useState(false)
   const height = useStore((s) => s.bottomPanelHeight)
   const setHeight = useStore((s) => s.setBottomPanelHeight)
 
@@ -72,7 +76,7 @@ export function BottomPanel(): JSX.Element {
   return (
     <div
       className={[
-        'bottom',
+        'console',
         collapsed ? 'is-collapsed' : '',
         resize.resizing ? 'is-resizing' : ''
       ]
@@ -84,7 +88,7 @@ export function BottomPanel(): JSX.Element {
           there is nothing to resize while the body is gone. */}
       {collapsed ? null : (
         <div
-          className="bottom-resize-handle"
+          className="console-resize-handle"
           aria-label="Resize the panel"
           aria-valuemax={Math.round(window.innerHeight * 0.66)}
           title="Drag to resize. Double-click to reset."
@@ -153,6 +157,16 @@ export function BottomPanel(): JSX.Element {
         ) : null}
 
         <span style={{ flex: 1 }} />
+        {tab === 'activity' && !collapsed ? (
+          <button
+            className={showDebug ? 'tab is-active' : 'tab'}
+            onClick={() => setShowDebug(!showDebug)}
+            aria-pressed={showDebug}
+            title="Include debug-level events in the activity log"
+          >
+            Show detail
+          </button>
+        ) : null}
         <button
           className="btn btn--ghost btn--sm"
           onClick={() => setCollapsed(!collapsed)}
@@ -163,8 +177,8 @@ export function BottomPanel(): JSX.Element {
       </div>
 
       {collapsed ? null : (
-        <div className="bottom-body">
-          {tab === 'activity' ? <ActivityTab /> : null}
+        <div className="console-body">
+          {tab === 'activity' ? <ActivityTab showDebug={showDebug} /> : null}
           {tab === 'changes' ? <ChangesTab /> : null}
           {tab === 'results' ? <ResultsTab /> : null}
           {tab === 'agents' ? <AgentsTab /> : null}
