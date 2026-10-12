@@ -54,6 +54,17 @@ npm run build
 npm start
 ```
 
+To build and open two independent instances at once:
+
+```bash
+npm run start:two
+```
+
+The windows use the `alice` and `bob` profiles, with separate settings, API
+keys and collaboration identities. After building, you can also run
+`node scripts/launch-two.mjs` directly, or supply two distinct profile names.
+The launcher exits while both windows remain open.
+
 Other scripts:
 
 | Script | What it does |
@@ -61,6 +72,7 @@ Other scripts:
 | `npm run dev` | Dev server + Electron, with hot reload |
 | `npm run build` | Type check, then bundle main / preload / renderer into `out/` |
 | `npm start` | Run the built app |
+| `npm run start:two` | Build and launch two independent instances |
 | `npm test` | The whole test suite |
 | `npm run typecheck` | Type check all three TypeScript projects |
 | `npm run smoke` | Boot the built app and fail if the renderer logs an error |

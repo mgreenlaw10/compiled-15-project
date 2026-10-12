@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { sayHi } from '../src/index.ts'
+import { NewType, sayHi } from '../src/index.ts'
 
 test('sayHi prints hi to the console', () => {
   const original = console.log
@@ -15,4 +15,14 @@ test('sayHi prints hi to the console', () => {
     console.log = original
   }
   assert.deepEqual(lines, ['hi'])
+})
+
+test('NewType holds a vector of two floats', () => {
+  const vector = new NewType(1.5, -2.25)
+  assert.equal(vector.x, 1.5)
+  assert.equal(vector.y, -2.25)
+
+  const zero = new NewType()
+  assert.equal(zero.x, 0)
+  assert.equal(zero.y, 0)
 })

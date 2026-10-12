@@ -96,6 +96,22 @@ export function buildMenuTemplate(
     {
       label: 'View',
       submenu: [
+        // Checkbox items keep their own checked state, and the renderer
+        // mirrors it. Defaults here must match the store's initial values:
+        // the colour legend starts hidden, the minimap starts shown.
+        {
+          label: 'Dependency Colour Legend',
+          type: 'checkbox',
+          checked: false,
+          click: () => send(COMMANDS.toggleLegend)
+        },
+        {
+          label: 'Minimap',
+          type: 'checkbox',
+          checked: true,
+          click: () => send(COMMANDS.toggleMinimap)
+        },
+        { type: 'separator' },
         { role: 'reload' },
         { role: 'forceReload' },
         { role: 'toggleDevTools' },

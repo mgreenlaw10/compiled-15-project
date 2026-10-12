@@ -19,3 +19,22 @@ test('login rejects a wrong password', () => {
   createUser('grace@example.com', 'Grace', hashPassword('hopper'))
   assert.throws(() => login('grace@example.com', 'nope'), /Invalid credentials/)
 })
+
+/** Prints hi to the console. */
+export function sayHi(): void {
+  console.log('hi')
+}
+
+test('sayHi prints hi to the console', () => {
+  const original = console.log
+  const lines: unknown[] = []
+  console.log = (...data: unknown[]) => {
+    lines.push(...data)
+  }
+  try {
+    sayHi()
+  } finally {
+    console.log = original
+  }
+  assert.deepEqual(lines, ['hi'])
+})

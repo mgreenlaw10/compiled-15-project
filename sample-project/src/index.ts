@@ -19,3 +19,14 @@ export function shutdown(): void {
 export function sayHi(): void {
   console.log('hi')
 }
+
+/** A vector of two floats. */
+export class NewType {
+  x: number
+  y: number
+
+  constructor(x = 0, y = 0) {
+    this.x = x
+    this.y = y
+  }
+}

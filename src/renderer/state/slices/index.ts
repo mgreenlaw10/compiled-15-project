@@ -14,4 +14,8 @@ export { createProjectSlice } from './project'
 export { createSelectionSlice } from './selection'
 export { createSessionSlice } from './session'
 export { createSettingsSlice } from './settings'
-export { createUiSlice } from './ui'
+export {
+  createUiSlice,
+  DEFAULT_BOTTOM_PANEL_HEIGHT,
+  DEFAULT_LEFT_PANE_WIDTH
+} from './ui'

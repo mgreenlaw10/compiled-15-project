@@ -14,10 +14,14 @@
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
     "start": "electron-vite preview",
+    "start:two": "npm run build && node scripts/launch-two.mjs",
     "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit && tsc -p tsconfig.test-ui.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke": "node scripts/smoke-launch.mjs",
+    "demo:setup": "node scripts/collab-demo.mjs",
+    "demo:alice": "node scripts/launch-profile.mjs alice",
+    "demo:bob": "node scripts/launch-profile.mjs bob",
     "verify": "npm run typecheck && npm run test && npm run build && npm run smoke"
   },
   "dependencies": {

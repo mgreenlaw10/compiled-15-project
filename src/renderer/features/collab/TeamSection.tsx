@@ -49,8 +49,7 @@ export function TeamSection(): JSX.Element {
   if (!enabled) {
     return (
       <div className="sidebar-section">
-        <div className="section-title">Team</div>
-        <Empty>This project is not set up for collaboration.</Empty>
+          <Empty>This project is not set up for collaboration.</Empty>
         <button className="btn btn--small" onClick={() => openDialog('collab-setup')}>
           Set up collaboration…
         </button>
@@ -65,8 +64,6 @@ export function TeamSection(): JSX.Element {
 
   return (
     <div className="sidebar-section">
-      <div className="section-title">Team</div>
-
       {/* --- honesty about freshness, first ---------------------------- */}
       <div className={sync?.stale ? 'sync-line is-stale' : 'sync-line'}>
         <span

@@ -89,6 +89,7 @@ export function SettingsDialog(): JSX.Element {
   return (
     <Modal
       title="Settings"
+      bodyClassName="settings-body"
       onClose={() => openDialog(null)}
       footer={
         <>
@@ -120,14 +121,6 @@ export function SettingsDialog(): JSX.Element {
         </>
       }
     >
-      <Banner kind="info">
-        Cartograph works without a key: scanning, the module graph, file and
-        symbol moves, import rewriting, generation and validation are all
-        deterministic. A key adds model-written descriptions and the two
-        operations that need interpretation — moving a responsibility and
-        generating a module's implementation.
-      </Banner>
-
       {test ? (
         <Banner kind={test.ok ? 'ok' : 'error'} onClose={() => setTest(null)}>
           {test.message}

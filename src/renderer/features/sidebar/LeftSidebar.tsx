@@ -6,18 +6,21 @@
  * draggable onto a graph node to move a file between modules.
  */
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 
 import type { FileTreeNode } from '../../../shared/types/project'
 import { moduleStats } from '../../../shared/graph/selectors'
-import { useModulesWithPendingChanges, useStore } from '../../state/store'
+import {
+  DEFAULT_LEFT_PANE_WIDTH,
+  useModulesWithPendingChanges,
+  useStore
+} from '../../state/store'
 import { TeamSection } from '../collab'
-import { Badge, Empty, plural } from '../../ui'
+import { Badge, Empty, plural, useDragSize } from '../../ui'
 import { FILE_DRAG_MIME, type FileDragPayload } from '../canvas/ModuleNodeView'
 
 function ProjectInfoSection(): JSX.Element {
   const project = useStore((s) => s.project)
-  const graph = useStore((s) => s.desired)
   const reveal = (target: string): void => {
     void window.cartograph.revealInFolder(target)
   }
@@ -33,7 +36,6 @@ function ProjectInfoSection(): JSX.Element {
     )
   }
 
-  const analysis = graph?.analysis
   return (
     <div className="pane-body">
       <dl className="kv">
@@ -50,47 +52,6 @@ function ProjectInfoSection(): JSX.Element {
             <span className="mono">{project.root}</span>
           </button>
         </dd>
-        <dt>Setup</dt>
-        <dd>
-          <div className="chips">
-            {project.hasPackageJson ? <span className="tag">package.json</span> : null}
-            {project.hasTsConfig ? <span className="tag">tsconfig</span> : null}
-            {project.isGitRepo ? <span className="tag">git</span> : null}
-            {project.hasTestScript ? <span className="tag">npm test</span> : null}
-            {!project.hasPackageJson && !project.hasTsConfig ? (
-              <span className="faint">plain directory</span>
-            ) : null}
-          </div>
-        </dd>
-        {analysis ? (
-          <>
-            <dt>Analyzed</dt>
-            <dd>
-              {plural(analysis.fileCount, 'source file')}, {analysis.loc} lines
-              {analysis.skippedFileCount > 0
-                ? `, ${analysis.skippedFileCount} skipped`
-                : ''}
-            </dd>
-            <dt>Source roots</dt>
-            <dd className="mono">
-              {analysis.sourceRoots.map((r) => r || '(root)').join(', ')}
-            </dd>
-            <dt>Descriptions</dt>
-            <dd>
-              {analysis.aiAssisted ? (
-                <Badge kind="ai">model-written</Badge>
-              ) : (
-                <span className="faint">from static analysis</span>
-              )}
-            </dd>
-            {analysis.warnings.length > 0 ? (
-              <>
-                <dt>Warnings</dt>
-                <dd>{plural(analysis.warnings.length, 'warning')}</dd>
-              </>
-            ) : null}
-          </>
-        ) : null}
       </dl>
     </div>
   )
@@ -281,49 +242,126 @@ function ExplorerSection(): JSX.Element {
   )
 }
 
+/**
+ * One accordion section.
+ *
+ * The header is the whole clickable target, so it carries no nested button —
+ * a button inside a clickable row fights it for clicks, which is why the
+ * project's "Open" control lives in the section body instead.
+ */
+function Section({
+  title,
+  open,
+  onToggle,
+  grow,
+  children
+}: {
+  title: string
+  open: boolean
+  onToggle: () => void
+  /** Expanded sections that should take the leftover height. */
+  grow?: boolean
+  children: ReactNode
+}): JSX.Element {
+  const classes = ['pane-section', 'pane-section--accordion']
+  if (open && grow) classes.push('pane-section--grow')
+
+  return (
+    <div className={classes.join(' ')}>
+      <button
+        className="pane-header pane-header--toggle"
+        aria-expanded={open}
+        onClick={onToggle}
+      >
+        <span className="pane-caret">{open ? '▾' : '▸'}</span>
+        <span className="pane-header-label">{title}</span>
+      </button>
+      {open ? children : null}
+    </div>
+  )
+}
+
+type SectionName = 'project' | 'team' | 'modules' | 'explorer'
+
 export function LeftSidebar(): JSX.Element {
   const openProject = useStore((s) => s.openProject)
   const busy = useStore((s) => s.busy)
+  const width = useStore((s) => s.leftPaneWidth)
+  const setWidth = useStore((s) => s.setLeftPaneWidth)
+
+  // Independently collapsible rather than one-at-a-time: these answer
+  // different questions and people want more than one open at once. Team
+  // starts closed because it is empty unless the project is collaborative.
+  const [open, setOpen] = useState<Record<SectionName, boolean>>({
+    project: true,
+    team: false,
+    modules: true,
+    explorer: true
+  })
+  const toggle = (name: SectionName): void =>
+    setOpen((current) => ({ ...current, [name]: !current[name] }))
+
+  const resize = useDragSize({
+    value: width,
+    onChange: setWidth,
+    min: 200,
+    // Leave room for the canvas; the inspector has its own column.
+    max: () => Math.max(200, Math.round(window.innerWidth * 0.5)),
+    initial: DEFAULT_LEFT_PANE_WIDTH,
+    from: 'end',
+    axis: 'x'
+  })
 
   return (
-    <aside className="pane pane--left">
-      <div className="pane-section">
-        <div className="pane-header">
-          <span>Project</span>
-          <button
-            className="btn btn--sm"
-            onClick={() => void openProject()}
-            disabled={busy !== 'idle'}
-          >
-            Open…
-          </button>
-        </div>
-        <ProjectInfoSection />
-      </div>
+    <aside className={resize.resizing ? 'pane pane--left is-resizing' : 'pane pane--left'}>
+      <div className="pane-scroll">
+        <Section
+          title="Project"
+          open={open.project}
+          onToggle={() => toggle('project')}
+        >
+          <div className="pane-section-actions">
+            <button
+              className="btn btn--sm"
+              onClick={() => void openProject()}
+              disabled={busy !== 'idle'}
+            >
+              Open…
+            </button>
+          </div>
+          <ProjectInfoSection />
+        </Section>
 
-      <div className="pane-section">
-        <div className="pane-header">
-          <span>Team</span>
-        </div>
-        <TeamSection />
-      </div>
+        <Section title="Team" open={open.team} onToggle={() => toggle('team')}>
+          <TeamSection />
+        </Section>
 
-      <div className="pane-section pane-section--grow">
-        <div className="pane-header">
-          <span>Modules</span>
-        </div>
-        <ModuleListSection />
+        <Section
+          title="Modules"
+          open={open.modules}
+          onToggle={() => toggle('modules')}
+          grow
+        >
+          <ModuleListSection />
+        </Section>
+
+        <Section
+          title="Project explorer"
+          open={open.explorer}
+          onToggle={() => toggle('explorer')}
+          grow
+        >
+          <ExplorerSection />
+        </Section>
       </div>
 
       <div
-        className="pane-section pane-section--grow"
-        style={{ borderBottom: 'none' }}
-      >
-        <div className="pane-header">
-          <span>Project explorer</span>
-        </div>
-        <ExplorerSection />
-      </div>
+        className="pane-resize-handle"
+        aria-label="Resize the sidebar"
+        aria-valuemax={Math.round(window.innerWidth * 0.5)}
+        title="Drag to resize. Double-click to reset."
+        {...resize.handleProps}
+      />
     </aside>
   )
 }

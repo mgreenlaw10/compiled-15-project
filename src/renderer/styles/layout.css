@@ -11,13 +11,13 @@
 
 .workspace {
   display: grid;
-  grid-template-columns: 280px 1fr 340px;
+  grid-template-columns: var(--left-width, 280px) 1fr 340px;
   min-height: 0;
   border-top: 1px solid var(--border);
 }
 
 .workspace.no-right {
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: var(--left-width, 280px) 1fr;
 }
 
 .pane {
@@ -31,6 +31,58 @@
 
 .pane--left {
   border-right: 1px solid var(--border);
+  position: relative;
+}
+
+.pane--left.is-resizing {
+  user-select: none;
+  cursor: col-resize;
+}
+
+/*
+ * Sections scroll together inside the pane, so a collapsed accordion leaves
+ * no dead space and an expanded one can overflow without clipping the handle.
+ */
+.pane-scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* Mirrors .inspector-resize-handle, on the opposite edge. */
+.pane-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -4px;
+  width: 8px;
+  z-index: 11;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.pane-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 3px;
+  height: 32px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: var(--border-strong);
+}
+
+.pane-resize-handle:hover::after,
+.pane-resize-handle:focus-visible::after {
+  background: var(--accent);
+}
+
+.pane-resize-handle:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -2px;
 }
 .pane--right {
   border-left: 1px solid var(--border);
@@ -92,6 +144,65 @@
 .pane-section--grow {
   flex: 1;
   overflow: hidden;
+}
+
+/* A collapsed section is just its header. */
+.pane-section--accordion {
+  flex: none;
+}
+
+.pane-section--accordion.pane-section--grow {
+  flex: 1;
+  min-height: 0;
+}
+
+/*
+ * Every header is the same size and shape, which is only possible because none
+ * of them carries an extra control: section actions live in the body.
+ */
+.pane-header--toggle {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 6px;
+  border: 0;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-align: left;
+}
+
+.pane-header--toggle:hover {
+  color: var(--text-dim);
+  background: var(--bg-hover);
+}
+
+.pane-header--toggle:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.pane-caret {
+  width: 10px;
+  flex: none;
+  color: var(--text-faint);
+}
+
+.pane-header-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Controls that belong to a section rather than to its header. */
+.pane-section-actions {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px 0;
 }
 
 .pane-header {

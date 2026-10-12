@@ -3,16 +3,57 @@
  */
 
 .bottom {
+  position: relative;
   display: flex;
   flex-direction: column;
   background: var(--bg-panel);
   border-top: 1px solid var(--border);
+  /* Height is set inline from the dragged size; this is the fallback. */
   height: 230px;
   flex: none;
 }
 
+.bottom.is-resizing {
+  user-select: none;
+  cursor: row-resize;
+}
+
+/* Sits on the top border, which is the edge a user reaches for. */
+.bottom-resize-handle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -4px;
+  height: 8px;
+  z-index: 12;
+  cursor: row-resize;
+  touch-action: none;
+}
+
+.bottom-resize-handle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 3px;
+  width: 32px;
+  height: 3px;
+  transform: translateX(-50%);
+  border-radius: 2px;
+  background: var(--border-strong);
+}
+
+.bottom-resize-handle:hover::after,
+.bottom-resize-handle:focus-visible::after {
+  background: var(--accent);
+}
+
+.bottom-resize-handle:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -2px;
+}
+
 .bottom.is-collapsed {
-  height: 34px;
+  height: 34px !important;
 }
 
 .tabs {

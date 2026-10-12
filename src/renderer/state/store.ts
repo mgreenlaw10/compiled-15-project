@@ -15,6 +15,10 @@
  */
 
 export { useStore } from './use-store'
+export {
+  DEFAULT_BOTTOM_PANEL_HEIGHT,
+  DEFAULT_LEFT_PANE_WIDTH
+} from './slices'
 export * from './selectors'
 export type {
   AppState,

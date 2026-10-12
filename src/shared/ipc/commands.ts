@@ -28,7 +28,9 @@ export const COMMANDS = {
   addModule: 'menu:add-module',
   relayout: 'menu:relayout',
   generate: 'menu:generate',
-  settings: 'menu:settings'
+  settings: 'menu:settings',
+  toggleLegend: 'menu:toggle-legend',
+  toggleMinimap: 'menu:toggle-minimap'
 } as const
 
 export type CommandName = (typeof COMMANDS)[keyof typeof COMMANDS]

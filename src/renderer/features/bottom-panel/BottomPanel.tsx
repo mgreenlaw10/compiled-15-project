@@ -7,8 +7,12 @@
 
 import { useState } from 'react'
 
-import { usePendingOperations, useStore } from '../../state/store'
-import { Badge } from '../../ui'
+import {
+  DEFAULT_BOTTOM_PANEL_HEIGHT,
+  usePendingOperations,
+  useStore
+} from '../../state/store'
+import { Badge, useDragSize } from '../../ui'
 import { useCollabEnabled, useSessionViews } from '../collab'
 import { ActivityTab } from './ActivityTab'
 import { AgentsTab } from './AgentsTab'
@@ -24,6 +28,19 @@ export function BottomPanel(): JSX.Element {
   const changeSet = useStore((s) => s.changeSet)
   const logs = useStore((s) => s.logs)
   const [collapsed, setCollapsed] = useState(false)
+  const height = useStore((s) => s.bottomPanelHeight)
+  const setHeight = useStore((s) => s.setBottomPanelHeight)
+
+  const resize = useDragSize({
+    value: height,
+    onChange: setHeight,
+    min: 90,
+    // Keep the canvas usable: the panel may take at most two thirds.
+    max: () => Math.max(90, Math.round(window.innerHeight * 0.66)),
+    initial: DEFAULT_BOTTOM_PANEL_HEIGHT,
+    from: 'start',
+    axis: 'y'
+  })
   const collabEnabled = useCollabEnabled()
   const sessions = useSessionViews()
 
@@ -53,7 +70,27 @@ export function BottomPanel(): JSX.Element {
   )
 
   return (
-    <div className={collapsed ? 'bottom is-collapsed' : 'bottom'}>
+    <div
+      className={[
+        'bottom',
+        collapsed ? 'is-collapsed' : '',
+        resize.resizing ? 'is-resizing' : ''
+      ]
+        .filter((name) => name !== '')
+        .join(' ')}
+      style={collapsed ? undefined : { height }}
+    >
+      {/* Dragging the top edge resizes; collapsing hides the handle, since
+          there is nothing to resize while the body is gone. */}
+      {collapsed ? null : (
+        <div
+          className="bottom-resize-handle"
+          aria-label="Resize the panel"
+          aria-valuemax={Math.round(window.innerHeight * 0.66)}
+          title="Drag to resize. Double-click to reset."
+          {...resize.handleProps}
+        />
+      )}
       <div className="tabs">
         <button
           className={tab === 'activity' ? 'tab is-active' : 'tab'}

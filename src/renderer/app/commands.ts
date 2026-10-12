@@ -27,7 +27,9 @@ export const COMMAND_HANDLERS: Record<CommandName, CommandHandler> = {
   [COMMANDS.addModule]: (s) => s.openDialog('add-module'),
   [COMMANDS.relayout]: (s) => s.relayout(),
   [COMMANDS.generate]: (s) => void s.plan(s.settings?.hasApiKey === true),
-  [COMMANDS.settings]: (s) => s.openDialog('settings')
+  [COMMANDS.settings]: (s) => s.openDialog('settings'),
+  [COMMANDS.toggleLegend]: (s) => s.toggleLegend(),
+  [COMMANDS.toggleMinimap]: (s) => s.toggleMinimap()
 }
 
 /** Runs one command against the current state. */

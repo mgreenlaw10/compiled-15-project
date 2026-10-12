@@ -38,21 +38,56 @@ it('opens module and source subgraphs with breadcrumbs without recording a sourc
   expect(useStore.getState().operations).toEqual([])
 })
 
-it('shows all five sections and creates a user contract as a pending structured edit', () => {
+it('shows the component sections of the selected module', () => {
   render(<Inspector />)
-  for (const name of ['Overall Description', 'Interface Functions', 'Data Structures', 'Private Implementation', 'Module Contracts']) {
+  for (const name of [
+    'Responsibilities',
+    'Interface Functions',
+    'Data Structures',
+    'Private Implementation'
+  ]) {
     expect(screen.getByText(name)).toBeTruthy()
   }
+  // Contract authoring was removed from the module inspector; contracts are
+  // still shown and edited by selecting a contract node.
+  expect(screen.queryByText('Module Contracts')).toBeNull()
+  expect(screen.queryByText('Add behavioral contract')).toBeNull()
+})
+
+it('records a user contract as a pending structured edit', () => {
+  render(<Inspector />)
   const observedCount = useStore.getState().original!.program.contracts.length
-  fireEvent.click(screen.getByText('Add behavioral contract'))
-  fireEvent.change(screen.getByLabelText('New contract description'), { target: { value: 'Reject withdrawals above the daily limit' } })
-  fireEvent.change(screen.getByLabelText('New contract expression'), { target: { value: 'amount <= 500' } })
   const symbol = useStore.getState().desired!.program.symbols.find((s) => s.name === 'withdraw')!
-  fireEvent.change(screen.getByLabelText('Contract target'), { target: { value: symbol.id } })
-  fireEvent.click(screen.getByRole('button', { name: 'Add contract' }))
+  const moduleId = useStore.getState().selectedModuleId!
+
+  act(() => {
+    useStore.getState().dispatchOperation({
+      type: 'add_contract',
+      moduleId,
+      contract: {
+        id: 'contract:user-daily-limit',
+        moduleId,
+        symbolId: symbol.id,
+        category: 'precondition',
+        description: 'Reject withdrawals above the daily limit',
+        expression: 'amount <= 500',
+        provenance: 'user_specified',
+        verification: 'unverified',
+        verificationNote: 'Pending user specification.',
+        evidence: [],
+        version: 1
+      }
+    })
+  })
+
   const state = useStore.getState()
   expect(state.operations.at(-1)?.type).toBe('add_contract')
-  expect(state.desired!.program.contracts.at(-1)).toMatchObject({ symbolId: symbol.id, provenance: 'user_specified', verification: 'unverified' })
+  expect(state.desired!.program.contracts.at(-1)).toMatchObject({
+    symbolId: symbol.id,
+    provenance: 'user_specified',
+    verification: 'unverified'
+  })
+  // The observed graph is never edited by a user contract.
   expect(state.original!.program.contracts).toHaveLength(observedCount)
 })
 
@@ -91,6 +126,9 @@ it.each([
 it('edits an assertion contract and displays potential consumer impact while preserving observed facts', () => {
   const state = useStore.getState()
   const contract = state.original!.program.contracts.find((c) => c.enforcement && state.original!.program.symbols.find((s) => s.id === c.symbolId)?.name === 'withdraw')!
+  // Contracts are inspected by selecting the contract node; the module
+  // inspector no longer lists them.
+  act(() => useStore.getState().selectSymbol(`contract:${contract.id}`))
   render(<Inspector />)
   const card = screen.getByTestId(`contract-${contract.id}`)
   fireEvent.click(within(card).getByText(/precondition · bank.Account.withdraw/))
@@ -123,7 +161,7 @@ it('shows only the selected function and keeps its edits pending', () => {
   const inspector = within(rendered.container.querySelector('.pane--right') as HTMLElement)
   expect(inspector.getByLabelText('Symbol name')).toHaveProperty('value', 'withdraw')
   expect(inspector.getByLabelText('Parameter 1 type')).toHaveProperty('value', 'int')
-  expect(inspector.queryByText('Overall Description')).toBeNull()
+  expect(inspector.queryByText('Responsibilities')).toBeNull()
   expect(inspector.queryByText('Interface Functions')).toBeNull()
   expect(inspector.queryByLabelText('Directory')).toBeNull()
   const type = inspector.getByLabelText('Parameter 1 type')
@@ -144,7 +182,7 @@ it('shows a type or exact field without unrelated module controls', () => {
   let inspector = within(rendered.container.querySelector('.pane--right') as HTMLElement)
   expect(inspector.getByLabelText('Symbol name')).toHaveProperty('value', 'Account')
   expect(inspector.getByLabelText('Field name')).toHaveProperty('value', 'balance')
-  expect(inspector.queryByText('Overall Description')).toBeNull()
+  expect(inspector.queryByText('Responsibilities')).toBeNull()
   fireEvent.click(rendered.container.querySelector(`[data-id="${type.fields[0].id}"]`)!)
   inspector = within(rendered.container.querySelector('.pane--right') as HTMLElement)
   expect(useStore.getState().selectedSymbolId).toBe(type.fields[0].id)
@@ -173,7 +211,7 @@ it('focuses a contract node and returns to module properties on request', () => 
   expect(inspector.queryByText('Module Contracts')).toBeNull()
   expect(inspector.queryByLabelText('Symbol name')).toBeNull()
   fireEvent.click(inspector.getByRole('button', { name: `Module details: ${owner.name}` }))
-  expect(screen.getByText('Overall Description')).toBeTruthy()
+  expect(screen.getByText('Responsibilities')).toBeTruthy()
   expect(useStore.getState().viewScope?.file).toBe(symbol.source.file)
   expect(useStore.getState().operations).toEqual([])
 })
@@ -189,7 +227,7 @@ it('inspects a boundary symbol in its actual module without changing the open fi
   expect(inspector.getByLabelText('Symbol name')).toHaveProperty('value', 'withdraw')
   expect(useStore.getState().selectedModuleId).toBe(graph.modules.find((m) => m.files.includes(target.source.file))!.id)
   expect(useStore.getState().viewScope).toEqual({ moduleId: source.id, file: 'services/PaymentService.java' })
-  expect(inspector.queryByText('Overall Description')).toBeNull()
+  expect(inspector.queryByText('Responsibilities')).toBeNull()
   expect(useStore.getState().operations).toEqual([])
 })
 
@@ -199,9 +237,9 @@ it('shows file information after selecting a file node, and clears that focus on
   const rendered = render(<><GraphCanvas /><Inspector /></>)
   fireEvent.click(rendered.container.querySelector('[data-id="api/Account.java"]')!)
   expect(screen.getByText('File symbols')).toBeTruthy()
-  expect(screen.queryByText('Overall Description')).toBeNull()
+  expect(screen.queryByText('Responsibilities')).toBeNull()
   act(() => useStore.getState().backToProject())
-  expect(screen.getByText('Overall Description')).toBeTruthy()
+  expect(screen.getByText('Responsibilities')).toBeTruthy()
   expect(useStore.getState().selectedFile).toBeNull()
   expect(useStore.getState().operations).toEqual([])
 })
@@ -218,6 +256,6 @@ it('shows source evidence for an unresolved node without inventing a declaration
   expect(inspector.getByText('Unresolved reference')).toBeTruthy()
   expect(inspector.getAllByText(/No analyzed declaration can be bound/).length).toBeGreaterThan(0)
   expect(inspector.queryByLabelText('Symbol name')).toBeNull()
-  expect(inspector.queryByText('Overall Description')).toBeNull()
+  expect(inspector.queryByText('Responsibilities')).toBeNull()
   expect(useStore.getState().operations).toEqual([])
 })

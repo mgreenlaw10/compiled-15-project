@@ -2,10 +2,9 @@ import { useState } from 'react'
 import type { ModuleNode } from '../../../shared/types/architecture'
 import type { BehavioralContract, ContractCategory, ProgramField, ProgramSymbol } from '../../../shared/types/program'
 import { isCallable, isDataType, symbolsOf } from '../../../shared/graph/program'
-import { analyzeImpact } from '../../../shared/graph/impact'
 import { operationId } from '../../../shared/util/id'
 import { createDraftSymbol, type DraftCategory } from '../../../shared/graph/draft-symbol'
-import { useStore, usePendingOperations } from '../../state/store'
+import { useStore } from '../../state/store'
 import { SectionTitle } from '../../ui'
 
 export function EditText({ label, value, commit, multiline = false, autoFocus = false }: { label: string; value: string; commit: (value: string) => void; multiline?: boolean; autoFocus?: boolean }): JSX.Element {
@@ -157,23 +156,14 @@ export function ContractCard({ contract: c, module, focused = false }: { contrac
 
 export function ProgramInspector({ module }: { module: ModuleNode }): JSX.Element {
   const graph = useStore((s) => s.desired)!
-  const original = useStore((s) => s.original)
   const dispatch = useStore((s) => s.dispatchOperation)
   const openModule = useStore((s) => s.openModule)
   const selectedRelationship = useStore((s) => s.selectedRelationshipId)
-  const pending = usePendingOperations()
   const symbols = symbolsOf(graph, module)
-  const [category, setCategory] = useState<ContractCategory>('precondition')
-  const [target, setTarget] = useState('')
-  const [fieldId, setFieldId] = useState('')
-  const [description, setDescription] = useState('')
-  const [expression, setExpression] = useState('')
   const add = (category: DraftCategory): void => {
     const symbol = createDraftSymbol(graph, module, category, operationId('symbol'))
     if (dispatch({ type: 'add_symbol', moduleId: module.id, symbol })) useStore.getState().selectSymbol(symbol.id)
   }
-  const contracts = graph.program.contracts.filter((c) => module.components.contracts.contractIds.includes(c.id))
-  const impacts = original ? pending.flatMap((op) => analyzeImpact(original, op)) : []
   const selectedEdge = graph.edges.find((e) => e.id === selectedRelationship)
   const selectedRelation = graph.program.relationships.find((r) => r.id === selectedRelationship)
   const selectedContract = selectedRelationship?.startsWith('contract:') ? graph.program.contracts.find((c) => c.id === selectedRelationship.slice(9)) : null
@@ -197,38 +187,9 @@ export function ProgramInspector({ module }: { module: ModuleNode }): JSX.Elemen
     {!module.components.dataStructures.symbolIds.length && <p className="hint">No data structures were found.</p>}
     <button className="btn btn--sm" aria-label="Add data structure" onClick={() => add('data')}>Add</button>
     <SectionTitle>Private Implementation</SectionTitle>
-    <p className="hint">Observed explanation ({module.components.implementation.descriptionOrigin}):</p>
-    <p>{module.components.implementation.observedDescription}</p>
+    <button className="btn btn--sm" aria-label="Add private implementation" onClick={() => add('implementation')}>Add</button>
     <EditText key={`${module.id}:${module.components.implementation.desiredDescription}`} label="Desired implementation behavior" multiline
       value={module.components.implementation.desiredDescription ?? ''} commit={(text) => dispatch({ type: 'update_implementation', moduleId: module.id, description: text })} />
     {symbols.filter((s) => isCallable(s) && !s.publiclyAccessible).map((s) => <SymbolCard key={s.id} symbol={s} module={module} />)}
-    <button className="btn btn--sm" aria-label="Add private implementation" onClick={() => add('implementation')}>Add</button>
-    <SectionTitle>Module Contracts</SectionTitle>
-    {['Module-wide guarantees', 'Interface function contracts', 'Data structure invariants', 'Shared state and resource requirements'].map((group, index) => {
-      const grouped = contracts.filter((c) => {
-        if (c.fieldId || ['ownership', 'lifecycle', 'concurrency', 'side_effect'].includes(c.category)) return index === 3
-        if (!c.symbolId) return index === 0
-        const component = symbols.find((s) => s.id === c.symbolId)
-        return index === (component && isDataType(component) ? 2 : 1)
-      })
-      return grouped.length ? <div key={group}><p className="label">{group}</p>{grouped.map((c) => <ContractCard key={c.id} contract={c} module={module} />)}</div> : null
-    })}
-    {!contracts.length && <p className="hint">No explicit contracts extracted. Add a specification below.</p>}
-    <details className="program-card"><summary>Add behavioral contract</summary>
-      <label className="field"><span className="label">Contract category</span><select value={category} onChange={(e) => setCategory(e.target.value as ContractCategory)}>{categories.map((c) => <option key={c} value={c}>{c.replaceAll('_', ' ')}</option>)}</select></label>
-      <label className="field"><span className="label">Contract target</span><select value={target} onChange={(e) => { setTarget(e.target.value); setFieldId('') }}><option value="">Module-wide</option>{symbols.map((s) => <option key={s.id} value={s.id}>{s.qualifiedName}</option>)}</select></label>
-      {!!symbols.find((s) => s.id === target)?.fields.length && <label className="field"><span className="label">Contract field</span><select value={fieldId} onChange={(e) => setFieldId(e.target.value)}><option value="">Whole component</option>{symbols.find((s) => s.id === target)!.fields.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select></label>}
-      <label className="field"><span className="label">New contract description</span><textarea value={description} onChange={(e) => setDescription(e.target.value)} /></label>
-      <label className="field"><span className="label">New contract expression</span><input value={expression} onChange={(e) => setExpression(e.target.value)} /></label>
-      <button className="btn btn--sm" disabled={!description.trim()} onClick={() => {
-        dispatch({ type: 'add_contract', moduleId: module.id, contract: { id: operationId('contract'), moduleId: module.id, ...(target ? { symbolId: target } : {}),
-          ...(fieldId ? { fieldId } : {}), category, description, ...(expression.trim() ? { expression: expression.trim() } : {}), provenance: 'user_specified', verification: 'unverified',
-          verificationNote: 'Pending user specification.', evidence: [], version: 1 } }); setDescription(''); setExpression('')
-      }}>Add contract</button>
-    </details>
-    {impacts.length > 0 && <><SectionTitle>Pending Change Impact</SectionTitle>{impacts.map((i, index) => <p className="hint" key={index}>
-      <strong>{graph.modules.find((m) => m.id === i.moduleId)?.name ?? i.moduleId}</strong> ({i.severity}): {i.reason}
-      {i.evidence.map((e, j) => <span key={j}> {e.file}:{e.line}</span>)}
-    </p>)}</>}
   </>
 }

@@ -6,3 +6,7 @@ dist/
 .DS_Store
 .cartograph/
 tests/.tmp/
+
+# Scratch repositories created by scripts/collab-demo.mjs. These are real
+# clones with their own .git directories and must never be committed.
+.collab-demo/

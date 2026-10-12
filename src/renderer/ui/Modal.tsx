@@ -13,6 +13,8 @@ export interface ModalProps {
   children: ReactNode
   footer?: ReactNode
   wide?: boolean
+  /** Extra class on the body, for dialogs that want their own spacing. */
+  bodyClassName?: string
 }
 
 export function Modal({
@@ -20,7 +22,8 @@ export function Modal({
   onClose,
   children,
   footer,
-  wide
+  wide,
+  bodyClassName
 }: ModalProps): JSX.Element {
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -44,7 +47,13 @@ export function Modal({
             ✕
           </button>
         </div>
-        <div className="modal-body">{children}</div>
+        <div
+          className={
+            bodyClassName ? `modal-body ${bodyClassName}` : 'modal-body'
+          }
+        >
+          {children}
+        </div>
         {footer ? <div className="modal-foot">{footer}</div> : null}
       </div>
     </div>

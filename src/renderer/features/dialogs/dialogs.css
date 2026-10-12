@@ -61,3 +61,21 @@
 .modal-foot .spacer {
   flex: 1;
 }
+
+/*
+ * Settings has no preamble, so the options carry the whole screen. Spacing
+ * them out is what keeps the list readable now that nothing introduces it.
+ */
+.settings-body > .field,
+.settings-body > .checkbox {
+  margin-bottom: 18px;
+}
+
+.settings-body > .field:last-child,
+.settings-body > .checkbox:last-child {
+  margin-bottom: 4px;
+}
+
+.settings-body > .field > .hint {
+  margin-top: 4px;
+}

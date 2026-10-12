@@ -7,7 +7,7 @@
  * touch this file.
  */
 
-import { useEffect } from 'react'
+import { useEffect, type CSSProperties } from 'react'
 
 import { BottomPanel } from '../features/bottom-panel'
 import { GraphCanvas } from '../features/canvas'
@@ -26,6 +26,7 @@ export function App(): JSX.Element {
   const setError = useStore((s) => s.setError)
   const setNotice = useStore((s) => s.setNotice)
   const graph = useStore((s) => s.desired)
+  const leftPaneWidth = useStore((s) => s.leftPaneWidth)
 
   useEffect(() => {
     void init()
@@ -37,7 +38,11 @@ export function App(): JSX.Element {
     <div className="app">
       <Toolbar />
 
-      <div className={graph ? 'workspace' : 'workspace no-right'}>
+      <div
+        className={graph ? 'workspace' : 'workspace no-right'}
+        // The sidebar owns its own width but the grid column has to follow it.
+        style={{ '--left-width': `${leftPaneWidth}px` } as CSSProperties}
+      >
         <LeftSidebar />
 
         <main className="pane pane--center">

@@ -13,7 +13,6 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ModuleNode } from '../../../shared/types/architecture'
 import { dependenciesOf, dependentsOf, importantSymbols } from '../../../shared/graph/selectors'
 import { useModulesWithPendingChanges, useStore } from '../../state/store'
-import { CollaborationPanel } from '../collab'
 import { Badge, Empty, SectionTitle, plural } from '../../ui'
 import { FILE_DRAG_MIME, type FileDragPayload } from '../canvas/ModuleNodeView'
 import { ProgramInspector } from './ProgramInspector'
@@ -53,7 +52,6 @@ function MoveTarget({
 
 export function Inspector(): JSX.Element {
   const graph = useStore((s) => s.desired)
-  const original = useStore((s) => s.original)
   const selectedId = useStore((s) => s.selectedModuleId)
   const selectedFile = useStore((s) => s.selectedFile)
   const selectedSymbolId = useStore((s) => s.selectedSymbolId)
@@ -106,7 +104,6 @@ export function Inspector(): JSX.Element {
 
   if (selectedSymbolId || selectedFile) return <NodeInspector module={module} />
 
-  const before = original?.modules.find((m) => m.id === module.id)
   const deps = dependenciesOf(graph, module.id)
   const dependents = dependentsOf(graph, module.id)
   const symbols = importantSymbols(module, 40)
@@ -179,12 +176,6 @@ export function Inspector(): JSX.Element {
               if (event.key === 'Escape') setName(module.name)
             }}
           />
-          <span className="hint">
-            Documentation only — renaming a module never changes code.
-            {before && before.name !== module.name
-              ? ` Was “${before.name}”.`
-              : ''}
-          </span>
         </label>
 
         <label className="field">
@@ -201,16 +192,8 @@ export function Inspector(): JSX.Element {
               if (event.key === 'Escape') setDirectory(module.directory ?? '')
             }}
           />
-          <span className="hint">
-            Structural. Changing this moves {plural(module.files.length, 'file')} on
-            disk and rewrites every import that points into them.
-            {module.directory === null
-              ? ' This module has no directory, so its files stay where they are until you give it one.'
-              : ''}
-          </span>
         </label>
 
-        <SectionTitle>Overall Description</SectionTitle>
         <label className="field">
           <span className="label">Description</span>
           <textarea
@@ -219,11 +202,6 @@ export function Inspector(): JSX.Element {
             onChange={(event) => setDescription(event.target.value)}
             onBlur={commitDescription}
           />
-          <span className="hint">
-            {module.metadata.confidenceBasis === 'ai'
-              ? 'Written by a language model — treat it as a suggestion.'
-              : 'Derived from file names, exports and directory layout.'}
-          </span>
         </label>
 
         <label className="field">
@@ -235,7 +213,6 @@ export function Inspector(): JSX.Element {
             onBlur={commitResponsibilities}
             placeholder="One responsibility per line"
           />
-          <span className="hint">One per line.</span>
         </label>
 
         <ProgramInspector key={module.id} module={module} />
@@ -554,8 +531,6 @@ export function Inspector(): JSX.Element {
           </button>
         </div>
       </div>
-
-      <CollaborationPanel />
     </aside>
   )
 }

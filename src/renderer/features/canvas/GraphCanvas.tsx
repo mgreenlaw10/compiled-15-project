@@ -65,6 +65,9 @@ export function GraphCanvas(): JSX.Element {
   const openModule = useStore((s) => s.openModule)
   const selectRelationship = useStore((s) => s.selectRelationship)
   const pending = useModulesWithPendingChanges()
+  // Both are View-menu preferences; see state/slices/ui.ts for the defaults.
+  const showLegend = useStore((s) => s.showLegend)
+  const showMinimap = useStore((s) => s.showMinimap)
   const collabStates = useModuleStates()
   const collabWarnings = useDependencyWarnings()
   const myDeveloperId = useMyDeveloperId()
@@ -234,15 +237,17 @@ export function GraphCanvas(): JSX.Element {
       >
         <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="#2a2f38" />
         <Controls showInteractive={false} />
-        <MiniMap
-          position="top-right"
-          pannable
-          zoomable
-          nodeColor={(node) =>
-            pending.has(node.id) ? PENDING_NODE_COLOR : NODE_COLOR
-          }
-          maskColor="rgba(20, 22, 26, 0.72)"
-        />
+        {showMinimap ? (
+          <MiniMap
+            position="top-right"
+            pannable
+            zoomable
+            nodeColor={(node) =>
+              pending.has(node.id) ? PENDING_NODE_COLOR : NODE_COLOR
+            }
+            maskColor="rgba(20, 22, 26, 0.72)"
+          />
+        ) : null}
       </ReactFlow>
 
       {graph.modules.length === 0 ? (
@@ -256,7 +261,7 @@ export function GraphCanvas(): JSX.Element {
         </div>
       ) : null}
 
-      <EdgeLegend detailed={selectedModuleId !== null} />
+      {showLegend ? <EdgeLegend detailed={selectedModuleId !== null} /> : null}
 
       {menu.target ? (
         <ContextMenu target={menu.target} onClose={menu.close} />

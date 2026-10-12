@@ -69,11 +69,21 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-faint);
-  margin: 16px 0 6px;
+  /*
+   * A visible rule rather than whitespace alone. The inspector alternates
+   * between editable module properties and lists of symbols and fields, and
+   * with spacing only it reads as one long column where a field could belong
+   * to either side of a heading.
+   */
+  margin: 20px 0 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
 
 .section-title:first-child {
   margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
 }
 
 .chips {

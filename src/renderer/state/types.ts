@@ -182,7 +182,17 @@ export interface UiSlice {
   error: string | null
   notice: string | null
   bottomTab: BottomTab
+  /** Canvas overlays, toggled from the View menu. */
+  showLegend: boolean
+  showMinimap: boolean
+  /** Panel sizes, in pixels. Dragged by the user; purely visual. */
+  leftPaneWidth: number
+  bottomPanelHeight: number
 
+  toggleLegend(): void
+  toggleMinimap(): void
+  setLeftPaneWidth(width: number): void
+  setBottomPanelHeight(height: number): void
   openDialog(name: DialogName): void
   setBottomTab(tab: BottomTab): void
   setError(message: string | null): void

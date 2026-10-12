@@ -149,9 +149,9 @@ describe('the application shell', () => {
     render(<App />)
     await openSample()
 
-    // The project pane reports what was analyzed.
+    // The project pane reports what is open: name and path, nothing else.
     expect(await screen.findByText('shop-api')).toBeTruthy()
-    expect(screen.getByText(/source files?,/)).toBeTruthy()
+    expect(screen.getAllByText(/sample-project/).length).toBeGreaterThan(0)
 
     // Module nodes are on the canvas, and the module list lists them.
     await waitFor(() => {
@@ -188,13 +188,29 @@ describe('the application shell', () => {
     // Listed both as part of the public interface and as a declaration.
     expect(screen.getAllByText('createSession').length).toBeGreaterThan(1)
 
-    // The two kinds of edit are labelled differently, in words.
-    expect(
-      screen.getByText(/Documentation only — renaming a module never changes code/i)
-    ).toBeTruthy()
-    expect(
-      screen.getByText(/Structural\. Changing this moves 5 files on disk/i)
-    ).toBeTruthy()
+    // The inspector no longer explains the two kinds of edit inline, so the
+    // status bar is the only thing left that distinguishes a documentation
+    // edit from one that will change code. It has to keep doing so.
+    const moduleId = useStore.getState().selectedModuleId!
+
+    act(() => {
+      useStore.getState().dispatchOperation({
+        type: 'update_module',
+        moduleId,
+        description: 'Documentation only.'
+      })
+    })
+    expect(screen.getByText(/documentation edit/i)).toBeTruthy()
+
+    act(() => {
+      useStore.getState().dispatchOperation({
+        type: 'rename_module',
+        moduleId,
+        name: 'Authentication',
+        directory: 'src/authentication'
+      })
+    })
+    expect(screen.getByText(/not yet in the code/i)).toBeTruthy()
   })
 
   it('treats dragging a node as visual only', async () => {

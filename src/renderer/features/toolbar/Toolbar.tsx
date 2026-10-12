@@ -28,7 +28,6 @@ export function Toolbar(): JSX.Element {
     <header className="toolbar">
       <div className="brand">
         <strong>Cartograph</strong>
-        <span>visual codebase editor</span>
       </div>
 
       <button className="btn" onClick={() => void openProject()} disabled={!idle}>
@@ -94,7 +93,7 @@ export function Toolbar(): JSX.Element {
 
       {settings?.hasApiKey ? (
         <Badge kind="ai" title={`Model: ${settings.model}, effort: ${settings.effort}`}>
-          ai ready
+          API KEY SET
         </Badge>
       ) : (
         <Badge title="Deterministic analysis and refactors work without a key">

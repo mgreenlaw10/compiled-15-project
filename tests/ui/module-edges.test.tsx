@@ -125,7 +125,7 @@ it('collapses file arrows and reveals only the selected file connections', async
   expect(details.every((edge) => edge.getAttribute('data-source') === 'implementation/account.c' || edge.getAttribute('data-target') === 'implementation/account.c')).toBe(true)
   fireEvent.click(screen.getByRole('button', { name: 'Canvas background' }))
   expect(edges.children).toHaveLength(1)
-  expect(screen.getByText('Overall Description')).toBeTruthy()
+  expect(screen.getByText('Responsibilities')).toBeTruthy()
   expect(useStore.getState().desired).toBe(graph)
   expect(useStore.getState().operations).toEqual([])
 })
@@ -145,7 +145,7 @@ it('reveals function or field arrows without expanding unrelated pairs, and keep
   let details = [...edges.querySelectorAll('[data-overview="no"]')]
   expect(details.length).toBeGreaterThan(1)
   expect(details.every((edge) => edge.getAttribute('data-source') === symbol.id || edge.getAttribute('data-target') === symbol.id)).toBe(true)
-  expect(screen.queryByText('Overall Description')).toBeNull()
+  expect(screen.queryByText('Responsibilities')).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: `Module ${structure.fields[0].id}` }))
   details = [...edges.querySelectorAll('[data-overview="no"]')]
   expect(details.length).toBeGreaterThan(1)
@@ -168,7 +168,7 @@ it('opens actual source evidence from a collapsed file arrow', async () => {
   fireEvent.click(within(overview as HTMLElement).getAllByRole('button')[0])
   expect(screen.getAllByText('Dependency evidence').length).toBeGreaterThan(0)
   expect(useStore.getState().selectedRelationshipId).toMatch(/^references:/)
-  expect(screen.queryByText('Overall Description')).toBeNull()
+  expect(screen.queryByText('Responsibilities')).toBeNull()
   expect(useStore.getState().operations).toEqual([])
 })
 
