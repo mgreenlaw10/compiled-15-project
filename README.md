@@ -328,7 +328,7 @@ Roughly 13,900 lines of source and 3,400 lines of tests.
 | Building the graph with import evidence | [`src/core/analyzer/build-graph.ts`](src/core/analyzer/build-graph.ts) |
 | The operation reducer (pure) | [`src/shared/graph/apply-operation.ts`](src/shared/graph/apply-operation.ts) |
 | Original vs desired diff | [`src/shared/graph/diff.ts`](src/shared/graph/diff.ts) |
-| Deterministic layered layout | [`src/shared/graph/layout.ts`](src/shared/graph/layout.ts) |
+| Deterministic force-directed auto-layout (seeded from a layered layout) | [`src/shared/graph/force-layout.ts`](src/shared/graph/force-layout.ts), [`layered-layout.ts`](src/shared/graph/layered-layout.ts) |
 | Plan-without-writing | [`src/core/transform/workspace.ts`](src/core/transform/workspace.ts) |
 | Import rewriting | [`src/core/transform/imports.ts`](src/core/transform/imports.ts) |
 | Operation executors | [`src/core/transform/ops/`](src/core/transform/ops) |
@@ -569,7 +569,9 @@ there is no installer target. Adding `electron-builder` is a config change, not
 a code change.
 
 **Scale is untested beyond medium projects.** Analysis holds every source file
-in memory and the layout is a single pass. It handles the sample project in
+in memory, and the force-directed layout is O(n²) per step — a 200-module graph
+lays out in about 0.1 s, but iterations are scaled down above that, so very
+large graphs get a rougher layout. It handles the sample project in
 ~130 ms and projects of a few thousand files comfortably; a very large monorepo
 will be slow, and the graph will be dense enough to need filtering that is not
 implemented.

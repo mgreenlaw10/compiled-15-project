@@ -224,7 +224,8 @@ export interface GraphLayout {
   positions: Record<ModuleId, NodePosition>
   /** Which modules are expanded to show their files in the canvas. */
   expanded: Record<ModuleId, boolean>
-  algorithm: 'layered' | 'manual'
+  /** `force` is the default auto-layout; `manual` once a node is dragged. */
+  algorithm: 'force' | 'layered' | 'manual'
   version: number
 }
 

@@ -129,7 +129,7 @@ export function createLayout(
     schemaVersion: LAYOUT_SCHEMA_VERSION,
     positions,
     expanded: {},
-    algorithm: 'layered',
+    algorithm: 'force',
     version: 1
   }
 }

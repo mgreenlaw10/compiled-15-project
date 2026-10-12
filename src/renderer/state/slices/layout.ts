@@ -41,7 +41,7 @@ export const createLayoutSlice: Slice<LayoutSlice> = (set, get) => ({
     set((state) => ({
       layout: {
         ...state.layout,
-        algorithm: 'layered',
+        algorithm: 'force',
         positions: layoutGraph(graph),
         version: state.layout.version + 1
       },
