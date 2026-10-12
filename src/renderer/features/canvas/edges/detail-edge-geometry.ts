@@ -1,4 +1,9 @@
-import { BaseEdge, EdgeLabelRenderer, Position, type EdgeProps } from '@xyflow/react'
+/**
+ * Geometry for detail arrows: the fanned curve drawn by `FloatingEdge` when a
+ * node is selected and its dependencies are shown one arrow per kind.
+ */
+
+import { Position } from '@xyflow/react'
 
 const direction = (position: Position): [number, number] => position === Position.Left ? [-1, 0] : position === Position.Right ? [1, 0] : position === Position.Top ? [0, -1] : [0, 1]
 
@@ -36,16 +41,4 @@ export function detailEdgeGeometry(
     labelX: (sourceX + 3 * cx1 + 3 * cx2 + targetX) / 8,
     labelY: (sourceY + 3 * cy1 + 3 * cy2 + targetY) / 8
   }
-}
-
-/** Fan parallel dependencies apart so selecting a module exposes readable arrows. */
-export function DependencyDetailEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerStart, markerEnd, style, label, data, interactionWidth }: EdgeProps): JSX.Element {
-  const offset = typeof data?.offset === 'number' ? data.offset : 0
-  const { path, labelX, labelY } = detailEdgeGeometry(sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, offset)
-  return <>
-    <BaseEdge id={id} path={path} markerStart={markerStart} markerEnd={markerEnd} style={style} interactionWidth={interactionWidth} />
-    {label && <EdgeLabelRenderer><div className="dependency-edge-label nodrag nopan" style={{
-      transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`
-    }}>{label}</div></EdgeLabelRenderer>}
-  </>
 }

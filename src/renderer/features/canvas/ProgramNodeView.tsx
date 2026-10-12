@@ -41,6 +41,9 @@ export interface ProgramNodeData extends Record<string, unknown> {
   external?: boolean
 }
 
+/** One handle per side; FloatingEdge decides which an arrow uses. */
+const SIDES = [Position.Top, Position.Right, Position.Bottom, Position.Left] as const
+
 export function ProgramNodeView({
   data,
   selected
@@ -52,12 +55,16 @@ export function ProgramNodeView({
 
   return (
     <>
-      <Handle type="target" position={Position.Left} />
+      {/* All sources, resolved in loose connection mode: edges here are drawn
+          from analysis, never by the user, so handles only need to exist on
+          every side for an arrow to attach to. */}
+      {SIDES.map((side) => (
+        <Handle key={side} id={side} type="source" position={side} isConnectable={false} />
+      ))}
       <div className={classes.join(' ')} title={data.detail ?? data.label}>
         {data.badge ? <span className="pnode-badge">{data.badge}</span> : null}
         <span className="pnode-name">{data.label}</span>
       </div>
-      <Handle type="source" position={Position.Right} />
     </>
   )
 }

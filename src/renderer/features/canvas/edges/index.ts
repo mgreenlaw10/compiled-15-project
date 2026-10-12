@@ -1,6 +1,6 @@
 export * from './edge-style'
 export * from './module-edges'
-export * from './DependencyDetailEdge'
+export * from './detail-edge-geometry'
 export * from './edge-sides'
 export { FloatingEdge } from './FloatingEdge'
 export { EdgeLegend } from './EdgeLegend'

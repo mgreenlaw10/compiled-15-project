@@ -1,5 +1,8 @@
 /**
- * A module-graph arrow that leaves and enters whichever sides are nearest.
+ * An arrow that leaves and enters whichever sides of its two nodes are nearest.
+ *
+ * Used on every canvas: the module graph and the nested file and symbol
+ * graphs, so arrows behave the same at every depth.
  *
  * React Flow normally pins an edge to the handle it was created from. This
  * edge ignores those coordinates and reads both modules' live position and
@@ -13,7 +16,7 @@
  *
  *   - overview arrows (one per module pair) draw a plain bezier;
  *   - detail arrows (one per dependency kind, shown for the selected module)
- *     and self-loops reuse the fanned curve from `DependencyDetailEdge`, so
+ *     and self-loops reuse the fanned curve from `detail-edge-geometry.ts`, so
  *     parallel arrows still separate.
  */
 
@@ -26,7 +29,7 @@ import {
   type InternalNode
 } from '@xyflow/react'
 
-import { detailEdgeGeometry } from './DependencyDetailEdge'
+import { detailEdgeGeometry } from './detail-edge-geometry'
 import { pickSides, selfLoopSides, type Rect, type SidePair } from './edge-sides'
 
 /** A node's on-canvas rectangle, or `null` before React Flow has measured it. */

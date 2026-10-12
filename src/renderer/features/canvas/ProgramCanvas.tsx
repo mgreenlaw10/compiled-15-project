@@ -1,13 +1,15 @@
 import { useEffect, useMemo } from 'react'
-import { ReactFlow, Background, Controls, MarkerType, useNodesState, type Node, type Edge } from '@xyflow/react'
+import { ReactFlow, Background, ConnectionMode, Controls, MarkerType, useNodesState, type Node, type Edge } from '@xyflow/react'
 import { useStore } from '../../state/store'
 import type { ModuleNode } from '../../../shared/types/architecture'
 import { isCallable, isDataType } from '../../../shared/graph/program'
-import { collapseFlowEdges, DependencyDetailEdge, underlyingFlowEdges } from './edges'
+import { collapseFlowEdges, FloatingEdge, underlyingFlowEdges } from './edges'
 import { ProgramNodeView } from './ProgramNodeView'
 
 const colors = { call: '#c08cf5', type: '#5fc6ae', field_read: '#e3ac67', field_write: '#e3ac67', contract: '#e482a7' }
-const edgeTypes = { dependencyDetail: DependencyDetailEdge }
+// As on the module canvas: every arrow attaches to whichever sides of its two
+// nodes give the shortest path, re-chosen live while a node is dragged.
+const edgeTypes = { default: FloatingEdge, dependencyDetail: FloatingEdge }
 const nodeTypes = { program: ProgramNodeView }
 export function ProgramCanvas({ module, file }: { module: ModuleNode; file?: string }): JSX.Element {
   const graph = useStore((s) => s.desired)!
@@ -123,7 +125,7 @@ export function ProgramCanvas({ module, file }: { module: ModuleNode; file?: str
       {file && <><span>›</span><span className="mono">{file}</span></>}
       <span className="hint">{file ? 'Source structure' : 'Module structure'} · {contracts.length} contracts</span>
     </div>
-    <ReactFlow key={`${module.id}:${file ?? ''}`} nodes={nodes} edges={displayedEdges} edgeTypes={edgeTypes} nodeTypes={nodeTypes} onNodesChange={onNodesChange} fitView
+    <ReactFlow key={`${module.id}:${file ?? ''}`} nodes={nodes} edges={displayedEdges} edgeTypes={edgeTypes} nodeTypes={nodeTypes} connectionMode={ConnectionMode.Loose} onNodesChange={onNodesChange} fitView
       onNodeClick={(_event, node) => selectNode(node.id)}
       onNodeDoubleClick={(_event, node) => {
         if (node.id.startsWith('contract:')) return
